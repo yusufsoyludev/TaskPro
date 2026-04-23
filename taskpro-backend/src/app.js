@@ -1,4 +1,5 @@
 import express from 'express';
+import boardsRouter from './routes/boards.js';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
 import testRouter from './routes/test.js';
@@ -20,6 +21,7 @@ app.get('/', (req, res) => {
 
 app.use('/test', testRouter);
 app.use('/auth', authRouter);
+app.use('/boards', boardsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
