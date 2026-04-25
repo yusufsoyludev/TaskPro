@@ -1,0 +1,114 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* gradient birebir */
+  background: linear-gradient(
+    to bottom,
+    #ffffff 0%,
+    #d7e3d1 50%,
+    #9bbf8c 100%
+  );
+}
+
+.content {
+  text-align: center;
+  padding: 20px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* HERO IMAGE */
+.hero {
+  width: 120px;
+  margin-bottom: 20px;
+}
+
+/* LOGO */
+.logoRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.logoIcon {
+  width: 36px;
+  height: 36px;
+  background: #000;
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #000;
+}
+
+/* TEXT */
+.description {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+/* PRIMARY BUTTON */
+.primaryBtn {
+  width: 100%;
+  height: 48px;
+  background: #111;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+/* LINK BUTTON */
+.linkBtn {
+  background: none;
+  border: none;
+  color: #000;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* TABLET */
+@media (min-width: 768px) {
+  .hero {
+    width: 150px;
+  }
+
+  .title {
+    font-size: 32px;
+  }
+
+  .description {
+    font-size: 16px;
+  }
+
+  .content {
+    max-width: 500px;
+  }
+}
+
+/* DESKTOP */
+@media (min-width: 1280px) {
+  .hero {
+    width: 170px;
+  }
+
+  .content {
+    max-width: 600px;
+  }
+}
