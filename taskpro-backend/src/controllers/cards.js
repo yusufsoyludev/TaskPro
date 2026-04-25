@@ -3,6 +3,7 @@ import {
   deleteCard,
   getCardsByColumn,
   updateCard,
+  moveCard,
 } from "../services/cards.js";
 
 export const createCardController = async (req, res) => {
@@ -39,4 +40,15 @@ export const deleteCardController = async (req, res) => {
   const userId = req.user._id;
   await deleteCard(cardId, userId);
   res.status(204).send();
+};
+export const moveCardController = async (req, res) => {
+  const { cardId } = req.params;
+  const { targetColumnId } = req.body;
+  const userId = req.user._id;
+  const card = await moveCard(cardId, targetColumnId, userId);
+  req.status(200).json({
+    status: 200,
+    message: "Card moved successfully",
+    data: card,
+  });
 };

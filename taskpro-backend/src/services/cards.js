@@ -66,3 +66,26 @@ export const deleteCard = async (cardId, userId) => {
   }
   await CardCollection.findByIdAndDelete(cardId);
 };
+export const moveCard = async (cardId, targetColumnId, userId) => {
+  const card = await CardCollection.findById(cardId);
+  if (!card) {
+    throw createHttpError(404, "Card not found");
+  }
+  const targetColumn = await ColumnCollection.findById(targetColumnId);
+  if (!targetColumn) {
+    throw createHttpError(404, "Target column not found");
+  }
+  const targetBoard = await BoardCollection.findOne({
+    _id: targetColumn.boardId,
+    owner: userId,
+  });
+  if (!targetBoard) {
+    throw createHttpError(403, "Forbidden");
+  }
+  const updatedCard = await CardCollection.findByIdAndUpdate(
+    cardId,
+    { columnId: targetColumnId },
+    { new: true },
+  );
+  return updatedCard;
+};
