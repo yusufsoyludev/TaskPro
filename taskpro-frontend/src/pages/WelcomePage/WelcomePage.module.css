@@ -3,112 +3,66 @@
   display: flex;
   justify-content: center;
   align-items: center;
-
-  /* gradient birebir */
-  background: linear-gradient(
-    to bottom,
-    #ffffff 0%,
-    #d7e3d1 50%,
-    #9bbf8c 100%
-  );
+  background: linear-gradient(180deg, #ffffff 0%, #dbe8d6 45%, #bedbb0 100%);
 }
 
 .content {
-  text-align: center;
-  padding: 20px;
   width: 100%;
-  max-width: 400px;
+  max-width: 335px;
+  padding: 20px;
+  text-align: center;
 }
 
-/* HERO IMAGE */
+/* 🔥 HERO SABİT */
 .hero {
-  width: 120px;
-  margin-bottom: 20px;
-}
-
-/* LOGO */
-.logoRow {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.logoIcon {
-  width: 36px;
-  height: 36px;
-  background: #000;
-  color: #fff;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-
-.title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #000;
+  display: block;
+  width: 222px;
+  height: auto;
+  margin: 0 auto 24px;
 }
 
 /* TEXT */
 .description {
+  margin: 0 auto 48px;
+  color: #161616;
   font-size: 14px;
-  color: #333;
-  margin-bottom: 32px;
-  line-height: 1.5;
+  line-height: 1.29;
+  letter-spacing: -0.02em;
 }
 
-/* PRIMARY BUTTON */
+/* BUTTON */
 .primaryBtn {
   width: 100%;
-  height: 48px;
-  background: #111;
-  color: white;
+  height: 49px;
   border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  margin-bottom: 12px;
+  border-radius: 8px;
+  background-color: #161616;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
 
-/* LINK BUTTON */
 .linkBtn {
-  background: none;
+  margin-top: 14px;
   border: none;
-  color: #000;
+  background: transparent;
+  color: #161616;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 /* TABLET */
-@media (min-width: 768px) {
-  .hero {
-    width: 150px;
-  }
-
-  .title {
-    font-size: 32px;
-  }
-
-  .description {
-    font-size: 16px;
-  }
-
+@media screen and (min-width: 768px) {
   .content {
-    max-width: 500px;
+    max-width: 473px;
   }
 }
 
 /* DESKTOP */
-@media (min-width: 1280px) {
-  .hero {
-    width: 170px;
-  }
-
+@media screen and (min-width: 1440px) {
   .content {
-    max-width: 600px;
+    max-width: 473px;
   }
 }
