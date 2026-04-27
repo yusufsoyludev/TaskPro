@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import styles from './DashboardPage.module.css';
+
 import NewBoardModal from './NewBoardModal';
 import EditBoardModal from './EditBoardModal';
 import HelpModal from './HelpModal';
+import AddColumnModal from './AddColumnModal';
+import EditColumnModal from './EditColumnModal';
 
 import iconLogo from '../../assets/svg/icon.svg';
 import menuIcon from '../../assets/svg/menu.svg';
@@ -25,13 +28,17 @@ export default function DashboardPage() {
   const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
   const [isEditBoardModalOpen, setIsEditBoardModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
-  const [createdBoard, setCreatedBoard] = useState(null);
+  const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
+  const [editingColumn, setEditingColumn] = useState(null);
+  const [activeColumnId, setActiveColumnId] = useState(null);
 
-  const openNewBoardModal = () => setIsNewBoardModalOpen(true);
-  const closeNewBoardModal = () => setIsNewBoardModalOpen(false);
+  const [createdBoard, setCreatedBoard] = useState(null);
+  const [columns, setColumns] = useState([]);
 
   const handleCreateBoard = boardData => {
     setCreatedBoard(boardData);
+    setColumns([]);
+    setActiveColumnId(null);
     setIsNewBoardModalOpen(false);
     setIsSidebarOpen(false);
   };
@@ -44,7 +51,42 @@ export default function DashboardPage() {
 
   const handleDeleteBoard = () => {
     setCreatedBoard(null);
+    setColumns([]);
+    setActiveColumnId(null);
     setIsSidebarOpen(false);
+  };
+
+  const handleAddColumn = columnTitle => {
+    const newColumn = {
+      id: crypto.randomUUID(),
+      title: columnTitle,
+    };
+
+    setColumns(prev => [...prev, newColumn]);
+    setActiveColumnId(null);
+    setIsAddColumnModalOpen(false);
+  };
+
+  const handleEditColumn = updatedTitle => {
+    setColumns(prev =>
+      prev.map(column =>
+        column.id === editingColumn.id
+          ? { ...column, title: updatedTitle }
+          : column,
+      ),
+    );
+
+    setEditingColumn(null);
+  };
+
+  const handleDeleteColumn = columnId => {
+    setColumns(prev => prev.filter(column => column.id !== columnId));
+
+    setActiveColumnId(prevId => (prevId === columnId ? null : prevId));
+  };
+
+  const toggleColumn = columnId => {
+    setActiveColumnId(prevId => (prevId === columnId ? null : columnId));
   };
 
   return (
@@ -80,7 +122,7 @@ export default function DashboardPage() {
             <button
               type="button"
               className={styles.plusBtn}
-              onClick={openNewBoardModal}
+              onClick={() => setIsNewBoardModalOpen(true)}
               aria-label="Create new board"
             >
               <img src={plusIcon} alt="" />
@@ -194,18 +236,83 @@ export default function DashboardPage() {
           </div>
 
           {createdBoard ? (
-            <div className={styles.addColumnBox}>
-              <button type="button" className={styles.addColumnBtn}>
-                <span>
-                  <img src={plusIcon} alt="" />
-                </span>
-                Add another column
-              </button>
+            <div className={styles.boardWorkspace}>
+              {columns.map(column => {
+                const isActive = activeColumnId === column.id;
+
+                return (
+                  <div className={styles.columnGroup} key={column.id}>
+                    <section
+                      className={`${styles.columnCard} ${
+                        isActive ? styles.activeColumn : ''
+                      }`}
+                      onClick={() => toggleColumn(column.id)}
+                    >
+                      <div className={styles.columnHeader}>
+                        <h2>{column.title}</h2>
+
+                        <div className={styles.columnActions}>
+                          <button
+                            type="button"
+                            aria-label="Edit column"
+                            onClick={event => {
+                              event.stopPropagation();
+                              setEditingColumn(column);
+                            }}
+                          >
+                            <img src={pencilIcon} alt="" />
+                          </button>
+
+                          <button
+                            type="button"
+                            aria-label="Delete column"
+                            onClick={event => {
+                              event.stopPropagation();
+                              handleDeleteColumn(column.id);
+                            }}
+                          >
+                            <img src={trashIcon} alt="" />
+                          </button>
+                        </div>
+                      </div>
+                    </section>
+
+                    <div
+                      className={`${styles.addCardWrapper} ${
+                        isActive ? styles.addCardWrapperOpen : ''
+                      }`}
+                    >
+                      <button type="button" className={styles.addCardBtn}>
+                        <span>
+                          <img src={plusIcon} alt="" />
+                        </span>
+                        Add another card
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className={styles.addColumnBox}>
+                <button
+                  type="button"
+                  className={styles.addColumnBtn}
+                  onClick={() => setIsAddColumnModalOpen(true)}
+                >
+                  <span>
+                    <img src={plusIcon} alt="" />
+                  </span>
+                  Add another column
+                </button>
+              </div>
             </div>
           ) : (
             <p className={styles.emptyText}>
               Before starting your project, it is essential{' '}
-              <button type="button" onClick={openNewBoardModal}>
+              <button
+                type="button"
+                onClick={() => setIsNewBoardModalOpen(true)}
+              >
                 to create a board
               </button>{' '}
               to visualize and track all the necessary tasks and milestones.
@@ -218,7 +325,7 @@ export default function DashboardPage() {
 
       {isNewBoardModalOpen && (
         <NewBoardModal
-          onClose={closeNewBoardModal}
+          onClose={() => setIsNewBoardModalOpen(false)}
           onCreate={handleCreateBoard}
         />
       )}
@@ -233,6 +340,21 @@ export default function DashboardPage() {
 
       {isHelpModalOpen && (
         <HelpModal onClose={() => setIsHelpModalOpen(false)} />
+      )}
+
+      {isAddColumnModalOpen && (
+        <AddColumnModal
+          onClose={() => setIsAddColumnModalOpen(false)}
+          onAdd={handleAddColumn}
+        />
+      )}
+
+      {editingColumn && (
+        <EditColumnModal
+          column={editingColumn}
+          onClose={() => setEditingColumn(null)}
+          onEdit={handleEditColumn}
+        />
       )}
     </div>
   );
