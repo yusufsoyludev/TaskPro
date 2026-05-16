@@ -6,11 +6,16 @@ import EditBoardModal from './EditBoardModal';
 import HelpModal from './HelpModal';
 import AddColumnModal from './AddColumnModal';
 import EditColumnModal from './EditColumnModal';
+import AddCardModal from './AddCardModal';
+import EditCardModal from './EditCardModal';
+import FilterModal from './FilterModal';
+import EditProfileModal from './EditProfileModal';
+import ColumnCard from './ColumnCard';
 
 import iconLogo from '../../assets/svg/icon.svg';
 import menuIcon from '../../assets/svg/menu.svg';
 import filterIcon from '../../assets/svg/filter.svg';
-import themeIcon from '../../assets/svg/theme-svg.svg';
+
 import plusIcon from '../../assets/svg/plus.svg';
 import logoutIcon from '../../assets/svg/logout.svg';
 
@@ -23,6 +28,8 @@ import trashIcon from '../../assets/svg-navigate/trash-04.svg';
 import cactusImg from '../../assets/2.png';
 import userImg from '../../assets/user.png';
 
+import { findBgById } from '../../constants/backgroundConfig';
+
 export default function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
@@ -30,29 +37,54 @@ export default function DashboardPage() {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isAddColumnModalOpen, setIsAddColumnModalOpen] = useState(false);
   const [editingColumn, setEditingColumn] = useState(null);
-  const [activeColumnId, setActiveColumnId] = useState(null);
+  const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
+  const [activeCardColumnId, setActiveCardColumnId] = useState(null);
+  const [editingCard, setEditingCard] = useState(null);
+  const [filterPriority, setFilterPriority] = useState(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const [createdBoard, setCreatedBoard] = useState(null);
-  const [columns, setColumns] = useState([]);
+  const [user, setUser] = useState({ name: 'Ivetta', avatarUrl: null });
+  const [boards, setBoards] = useState([]);
+  const [activeBoardId, setActiveBoardId] = useState(null);
+
+  const activeBoard = boards.find(b => b.id === activeBoardId) ?? null;
+  const columns = activeBoard?.columns ?? [];
+
+  const updateActiveBoard = updater => {
+    setBoards(prev =>
+      prev.map(b => (b.id === activeBoardId ? updater(b) : b)),
+    );
+  };
+
+  const handleSaveProfile = updated => {
+    setUser(updated);
+    setIsProfileOpen(false);
+  };
 
   const handleCreateBoard = boardData => {
-    setCreatedBoard(boardData);
-    setColumns([]);
-    setActiveColumnId(null);
+    const newBoard = {
+      id: crypto.randomUUID(),
+      ...boardData,
+      columns: [],
+    };
+    setBoards(prev => [...prev, newBoard]);
+    setActiveBoardId(newBoard.id);
+    setFilterPriority(null);
     setIsNewBoardModalOpen(false);
     setIsSidebarOpen(false);
   };
 
   const handleEditBoard = boardData => {
-    setCreatedBoard(boardData);
+    updateActiveBoard(b => ({ ...b, ...boardData }));
     setIsEditBoardModalOpen(false);
     setIsSidebarOpen(false);
   };
 
-  const handleDeleteBoard = () => {
-    setCreatedBoard(null);
-    setColumns([]);
-    setActiveColumnId(null);
+  const handleDeleteBoard = boardId => {
+    setBoards(prev => prev.filter(b => b.id !== boardId));
+    setActiveBoardId(prev => (prev === boardId ? null : prev));
+    setFilterPriority(null);
     setIsSidebarOpen(false);
   };
 
@@ -60,33 +92,79 @@ export default function DashboardPage() {
     const newColumn = {
       id: crypto.randomUUID(),
       title: columnTitle,
+      cards: [],
     };
-
-    setColumns(prev => [...prev, newColumn]);
-    setActiveColumnId(null);
+    updateActiveBoard(b => ({ ...b, columns: [...(b.columns ?? []), newColumn] }));
     setIsAddColumnModalOpen(false);
   };
 
   const handleEditColumn = updatedTitle => {
-    setColumns(prev =>
-      prev.map(column =>
-        column.id === editingColumn.id
-          ? { ...column, title: updatedTitle }
-          : column,
+    updateActiveBoard(b => ({
+      ...b,
+      columns: b.columns.map(col =>
+        col.id === editingColumn.id ? { ...col, title: updatedTitle } : col,
       ),
-    );
-
+    }));
     setEditingColumn(null);
   };
 
   const handleDeleteColumn = columnId => {
-    setColumns(prev => prev.filter(column => column.id !== columnId));
-
-    setActiveColumnId(prevId => (prevId === columnId ? null : prevId));
+    updateActiveBoard(b => ({
+      ...b,
+      columns: b.columns.filter(col => col.id !== columnId),
+    }));
   };
 
-  const toggleColumn = columnId => {
-    setActiveColumnId(prevId => (prevId === columnId ? null : columnId));
+  const handleOpenAddCard = (columnId, event) => {
+    event.stopPropagation();
+    setActiveCardColumnId(columnId);
+    setIsAddCardModalOpen(true);
+  };
+
+  const handleAddCard = cardData => {
+    const newCard = { id: crypto.randomUUID(), ...cardData };
+    updateActiveBoard(b => ({
+      ...b,
+      columns: b.columns.map(col =>
+        col.id === activeCardColumnId
+          ? { ...col, cards: [...(col.cards ?? []), newCard] }
+          : col,
+      ),
+    }));
+    setIsAddCardModalOpen(false);
+    setActiveCardColumnId(null);
+  };
+
+  const handleDeleteCard = (columnId, cardId) => {
+    updateActiveBoard(b => ({
+      ...b,
+      columns: b.columns.map(col =>
+        col.id === columnId
+          ? { ...col, cards: col.cards.filter(c => c.id !== cardId) }
+          : col,
+      ),
+    }));
+  };
+
+  const handleEditCard = (columnId, card) => {
+    setEditingCard({ card, columnId });
+  };
+
+  const handleSaveCard = updatedCard => {
+    updateActiveBoard(b => ({
+      ...b,
+      columns: b.columns.map(col =>
+        col.id === editingCard.columnId
+          ? {
+              ...col,
+              cards: col.cards.map(c =>
+                c.id === updatedCard.id ? updatedCard : c,
+              ),
+            }
+          : col,
+      ),
+    }));
+    setEditingCard(null);
   };
 
   return (
@@ -101,9 +179,7 @@ export default function DashboardPage() {
       )}
 
       <aside
-        className={`${styles.sidebar} ${
-          isSidebarOpen ? styles.sidebarOpen : ''
-        }`}
+        className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}
       >
         <div className={styles.logo}>
           <img src={iconLogo} alt="" />
@@ -130,38 +206,58 @@ export default function DashboardPage() {
           </div>
 
           <nav className={styles.boardList}>
-            {createdBoard ? (
-              <div className={`${styles.boardItem} ${styles.activeBoard}`}>
-                <div className={styles.boardName}>
-                  <img src={createdBoard.icon || projectIcon} alt="" />
-                  <span>{createdBoard.title}</span>
-                </div>
-
-                <div className={styles.boardActions}>
-                  <button
-                    type="button"
-                    aria-label="Edit board"
-                    onClick={() => setIsEditBoardModalOpen(true)}
-                  >
-                    <img src={pencilIcon} alt="" />
-                  </button>
-
-                  <button
-                    type="button"
-                    aria-label="Delete board"
-                    onClick={handleDeleteBoard}
-                  >
-                    <img src={trashIcon} alt="" />
-                  </button>
-                </div>
-              </div>
-            ) : (
+            {boards.length === 0 ? (
               <div className={styles.boardItem}>
                 <div className={styles.boardName}>
                   <img src={puzzleIcon} alt="" />
                   <span>No board yet</span>
                 </div>
               </div>
+            ) : (
+              boards.map(board => (
+                <div
+                  key={board.id}
+                  className={`${styles.boardItem} ${
+                    board.id === activeBoardId ? styles.activeBoard : ''
+                  }`}
+                  onClick={() => {
+                    setActiveBoardId(board.id);
+                    setFilterPriority(null);
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  <div className={styles.boardName}>
+                    <img src={board.icon || projectIcon} alt="" />
+                    <span>{board.title}</span>
+                  </div>
+
+                  {board.id === activeBoardId && (
+                    <div className={styles.boardActions}>
+                      <button
+                        type="button"
+                        aria-label="Edit board"
+                        onClick={event => {
+                          event.stopPropagation();
+                          setIsEditBoardModalOpen(true);
+                        }}
+                      >
+                        <img src={pencilIcon} alt="" />
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-label="Delete board"
+                        onClick={event => {
+                          event.stopPropagation();
+                          handleDeleteBoard(board.id);
+                        }}
+                      >
+                        <img src={trashIcon} alt="" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
             )}
           </nav>
         </div>
@@ -204,94 +300,79 @@ export default function DashboardPage() {
           </button>
 
           <div className={styles.userPanel}>
-            <button type="button" className={styles.themeBtn}>
-              <span>Theme</span>
-              <img src={themeIcon} alt="" />
+            <span className={styles.userName}>{user.name}</span>
+            <button
+              type="button"
+              className={styles.avatarBtn}
+              onClick={() => setIsProfileOpen(true)}
+              aria-label="Edit profile"
+            >
+              <img
+                src={user.avatarUrl ?? userImg}
+                alt="User avatar"
+                className={styles.avatar}
+              />
             </button>
-
-            <span className={styles.userName}>Ivetta</span>
-            <img src={userImg} alt="User avatar" className={styles.avatar} />
           </div>
         </header>
 
         <main
-          className={`${styles.content} ${
-            createdBoard ? styles.boardContent : ''
-          }`}
-          style={
-            createdBoard?.background
-              ? { '--mobile-board-bg': `url(${createdBoard.background})` }
-              : undefined
-          }
+          className={`${styles.content} ${activeBoard ? styles.boardContent : ''}`}
+          style={(() => {
+            const bg = findBgById(activeBoard?.bgId);
+            return {
+              ...(bg?.mobile   ? { '--mobile-board-bg':  `url(${bg.mobile})`   } : {}),
+              ...(bg?.tablet   ? { '--tablet-board-bg':  `url(${bg.tablet})`   } : {}),
+              ...(bg?.desktop  ? { '--desktop-board-bg': `url(${bg.desktop})`  } : {}),
+            };
+          })()}
         >
           <div className={styles.boardTopRow}>
-            {createdBoard && (
-              <h1 className={styles.boardTitle}>{createdBoard.title}</h1>
+            {activeBoard && (
+              <h1 className={styles.boardTitle}>{activeBoard.title}</h1>
             )}
 
-            <button type="button" className={styles.filterBtn}>
-              <img src={filterIcon} alt="" />
-              <span>Filters</span>
-            </button>
+            <div className={styles.filterWrapper}>
+              <button
+                type="button"
+                className={`${styles.filterBtn} ${filterPriority ? styles.filterBtnActive : ''}`}
+                onClick={() => setIsFilterOpen(prev => !prev)}
+              >
+                <img src={filterIcon} alt="" />
+                <span>Filters</span>
+              </button>
+
+              {isFilterOpen && (
+                <FilterModal
+                  active={filterPriority}
+                  onSelect={id => {
+                    setFilterPriority(id);
+                    setIsFilterOpen(false);
+                  }}
+                  onShowAll={() => {
+                    setFilterPriority(null);
+                    setIsFilterOpen(false);
+                  }}
+                  onClose={() => setIsFilterOpen(false)}
+                />
+              )}
+            </div>
           </div>
 
-          {createdBoard ? (
+          {activeBoard ? (
             <div className={styles.boardWorkspace}>
-              {columns.map(column => {
-                const isActive = activeColumnId === column.id;
-
-                return (
-                  <div className={styles.columnGroup} key={column.id}>
-                    <section
-                      className={`${styles.columnCard} ${
-                        isActive ? styles.activeColumn : ''
-                      }`}
-                      onClick={() => toggleColumn(column.id)}
-                    >
-                      <div className={styles.columnHeader}>
-                        <h2>{column.title}</h2>
-
-                        <div className={styles.columnActions}>
-                          <button
-                            type="button"
-                            aria-label="Edit column"
-                            onClick={event => {
-                              event.stopPropagation();
-                              setEditingColumn(column);
-                            }}
-                          >
-                            <img src={pencilIcon} alt="" />
-                          </button>
-
-                          <button
-                            type="button"
-                            aria-label="Delete column"
-                            onClick={event => {
-                              event.stopPropagation();
-                              handleDeleteColumn(column.id);
-                            }}
-                          >
-                            <img src={trashIcon} alt="" />
-                          </button>
-                        </div>
-                      </div>
-                    </section>
-
-                    <div
-                      className={`${styles.addCardWrapper} ${
-                        isActive ? styles.addCardWrapperOpen : ''
-                      }`}
-                    >
-                      <button type="button" className={styles.addCardBtn}>
-                        <span>
-                          <img src={plusIcon} alt="" />
-                        </span>
-                        Add another card
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {columns.map(column => (
+                <ColumnCard
+                  key={column.id}
+                  column={column}
+                  filterPriority={filterPriority}
+                  onEdit={() => setEditingColumn(column)}
+                  onDelete={() => handleDeleteColumn(column.id)}
+                  onAddCard={event => handleOpenAddCard(column.id, event)}
+                  onDeleteCard={cardId => handleDeleteCard(column.id, cardId)}
+                  onEditCard={card => handleEditCard(column.id, card)}
+                />
+              ))}
 
               <div className={styles.addColumnBox}>
                 <button
@@ -330,9 +411,9 @@ export default function DashboardPage() {
         />
       )}
 
-      {isEditBoardModalOpen && createdBoard && (
+      {isEditBoardModalOpen && activeBoard && (
         <EditBoardModal
-          board={createdBoard}
+          board={activeBoard}
           onClose={() => setIsEditBoardModalOpen(false)}
           onEdit={handleEditBoard}
         />
@@ -354,6 +435,32 @@ export default function DashboardPage() {
           column={editingColumn}
           onClose={() => setEditingColumn(null)}
           onEdit={handleEditColumn}
+        />
+      )}
+
+      {isAddCardModalOpen && (
+        <AddCardModal
+          onClose={() => {
+            setIsAddCardModalOpen(false);
+            setActiveCardColumnId(null);
+          }}
+          onAdd={handleAddCard}
+        />
+      )}
+
+      {editingCard && (
+        <EditCardModal
+          card={editingCard.card}
+          onClose={() => setEditingCard(null)}
+          onSave={handleSaveCard}
+        />
+      )}
+
+      {isProfileOpen && (
+        <EditProfileModal
+          user={user}
+          onClose={() => setIsProfileOpen(false)}
+          onSave={handleSaveProfile}
         />
       )}
     </div>

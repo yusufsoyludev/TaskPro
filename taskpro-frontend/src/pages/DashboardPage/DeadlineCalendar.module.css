@@ -1,0 +1,125 @@
+/* ── Calendar wrapper ─────────────────────────── */
+.calendar {
+  width: 100%;
+  padding: 12px 0 4px;
+  border-radius: 8px;
+  background-color: transparent;
+  user-select: none;
+}
+
+/* ── Header: arrows + month/year ─────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 0 2px;
+}
+
+.monthYear {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.navBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.navBtn:hover {
+  background-color: rgba(190, 219, 176, 0.12);
+}
+
+.navBtn img {
+  width: 16px;
+  height: 16px;
+  display: block;
+  /* SVG arrows are white by default — invert if they appear dark */
+  filter: brightness(0) invert(1);
+}
+
+/* ── Weekday row ──────────────────────────────── */
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 6px;
+}
+
+.weekday {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1;
+  padding: 4px 0;
+}
+
+/* ── Day grid ─────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 2px;
+}
+
+.day {
+  /* center the number in its cell */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* make cells square */
+  aspect-ratio: 1;
+  width: 100%;
+
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  line-height: 1;
+}
+
+.day:hover {
+  background-color: rgba(190, 219, 176, 0.15);
+}
+
+/* Days that belong to prev / next month */
+.dayFaded {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.dayFaded:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Today's date — subtle underline dot, no fill */
+.dayToday {
+  font-weight: 600;
+  color: #bedbb0;
+}
+
+/* Selected date — filled green circle */
+.daySelected {
+  background-color: #bedbb0;
+  color: #161616;
+  font-weight: 600;
+}
+
+.daySelected:hover {
+  background-color: #a8cc98;
+}
