@@ -1,5 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import {
+  fetchColumns,
+  createColumn,
+  updateColumn,
+  deleteColumn,
+} from '../../features/columns/columnsOperations';
+import {
+  fetchBoards,
+  createBoard,
+  updateBoard,
+  deleteBoard,
+} from '../../features/boards/boardsOperations';
+
 import styles from './DashboardPage.module.css';
+
+import { logout } from '../../features/auth/authOperations';
+import { selectToken } from '../../features/auth/authSelectors';
+import { setAuthHeader } from '../../services/api';
+
+import {
+  selectBoards,
+  selectActiveBoard,
+  selectActiveBoardId,
+} from '../../features/boards/boardsSelectors';
+
+
+import { setActiveBoardId } from '../../features/boards/boardsSlice';
 
 import NewBoardModal from './NewBoardModal';
 import EditBoardModal from './EditBoardModal';
@@ -11,11 +39,12 @@ import EditCardModal from './EditCardModal';
 import FilterModal from './FilterModal';
 import EditProfileModal from './EditProfileModal';
 import ColumnCard from './ColumnCard';
+import { selectColumns } from '../../features/columns/columnsSelectors';
+
 
 import iconLogo from '../../assets/svg/icon.svg';
 import menuIcon from '../../assets/svg/menu.svg';
 import filterIcon from '../../assets/svg/filter.svg';
-
 import plusIcon from '../../assets/svg/plus.svg';
 import logoutIcon from '../../assets/svg/logout.svg';
 
@@ -31,6 +60,31 @@ import userImg from '../../assets/user.png';
 import { findBgById } from '../../constants/backgroundConfig';
 
 export default function DashboardPage() {
+  const token=useSelector(selectToken);
+  const dispatch = useDispatch();
+  const boards = useSelector(selectBoards);
+const activeBoard = useSelector(selectActiveBoard);
+const activeBoardId = useSelector(selectActiveBoardId);
+const navigate = useNavigate();
+useEffect(() => {
+  if (!token) return;
+
+  setAuthHeader(token);
+  dispatch(fetchBoards());
+}, [dispatch, token]);
+useEffect(() => {
+  if (!activeBoardId) return;
+
+  dispatch(fetchColumns(activeBoardId));
+}, [dispatch, activeBoardId]);
+
+const handleLogout = async () => {
+  const result = await dispatch(logout());
+
+  if (logout.fulfilled.match(result)) {
+    navigate('/login');
+  }
+};
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
   const [isEditBoardModalOpen, setIsEditBoardModalOpen] = useState(false);
@@ -45,11 +99,10 @@ export default function DashboardPage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const [user, setUser] = useState({ name: 'Ivetta', avatarUrl: null });
-  const [boards, setBoards] = useState([]);
-  const [activeBoardId, setActiveBoardId] = useState(null);
+  
 
-  const activeBoard = boards.find(b => b.id === activeBoardId) ?? null;
-  const columns = activeBoard?.columns ?? [];
+  
+  const columns = useSelector(selectColumns);
 
   const updateActiveBoard = updater => {
     setBoards(prev =>
@@ -62,58 +115,72 @@ export default function DashboardPage() {
     setIsProfileOpen(false);
   };
 
-  const handleCreateBoard = boardData => {
-    const newBoard = {
-      id: crypto.randomUUID(),
-      ...boardData,
-      columns: [],
-    };
-    setBoards(prev => [...prev, newBoard]);
-    setActiveBoardId(newBoard.id);
+ const handleCreateBoard = async boardData => {
+  const result = await dispatch(createBoard(boardData));
+
+  if (createBoard.fulfilled.match(result)) {
     setFilterPriority(null);
     setIsNewBoardModalOpen(false);
     setIsSidebarOpen(false);
+  }
+};
+
+  const handleEditBoard=async boardData=>{
+    const result=await dispatch(
+      updateBoard({
+        boardId:activeBoardId,
+        boardData,
+      }),
+    );
+    if(updateBoard.fulfilled.match(result)){
+      setIsEditBoardModalOpen(false);
+      setIsSidebarOpen(false);
+    }
   };
 
-  const handleEditBoard = boardData => {
-    updateActiveBoard(b => ({ ...b, ...boardData }));
-    setIsEditBoardModalOpen(false);
-    setIsSidebarOpen(false);
+  const handleDeleteBoard=async boardId=>{
+    const result=await dispatch(deleteBoard(boardId));
+    if(deleteBoard.fulfilled.match(result)){
+      setFilterPriority(null);
+      setIsSidebarOpen(false);
+    }
   };
 
-  const handleDeleteBoard = boardId => {
-    setBoards(prev => prev.filter(b => b.id !== boardId));
-    setActiveBoardId(prev => (prev === boardId ? null : prev));
-    setFilterPriority(null);
-    setIsSidebarOpen(false);
-  };
-
-  const handleAddColumn = columnTitle => {
-    const newColumn = {
-      id: crypto.randomUUID(),
+  const handleAddColumn = async columnTitle => {
+  const result = await dispatch(
+    createColumn({
+      boardId: activeBoardId,
       title: columnTitle,
-      cards: [],
-    };
-    updateActiveBoard(b => ({ ...b, columns: [...(b.columns ?? []), newColumn] }));
-    setIsAddColumnModalOpen(false);
-  };
+    }),
+  );
 
-  const handleEditColumn = updatedTitle => {
-    updateActiveBoard(b => ({
-      ...b,
-      columns: b.columns.map(col =>
-        col.id === editingColumn.id ? { ...col, title: updatedTitle } : col,
-      ),
-    }));
+  if (createColumn.fulfilled.match(result)) {
+  setIsAddColumnModalOpen(false);
+  dispatch(fetchColumns(activeBoardId));
+}
+};
+
+  const handleEditColumn = async updatedTitle => {
+  const result = await dispatch(
+    updateColumn({
+      columnId: editingColumn.id,
+      title: updatedTitle,
+    }),
+  );
+
+  if (updateColumn.fulfilled.match(result)) {
     setEditingColumn(null);
-  };
+    dispatch(fetchColumns(activeBoardId));
+  }
+};
 
-  const handleDeleteColumn = columnId => {
-    updateActiveBoard(b => ({
-      ...b,
-      columns: b.columns.filter(col => col.id !== columnId),
-    }));
-  };
+  const handleDeleteColumn = async columnId => {
+  const result = await dispatch(deleteColumn(columnId));
+
+  if (deleteColumn.fulfilled.match(result)) {
+    dispatch(fetchColumns(activeBoardId));
+  }
+};
 
   const handleOpenAddCard = (columnId, event) => {
     event.stopPropagation();
@@ -220,11 +287,11 @@ export default function DashboardPage() {
                   className={`${styles.boardItem} ${
                     board.id === activeBoardId ? styles.activeBoard : ''
                   }`}
-                  onClick={() => {
-                    setActiveBoardId(board.id);
-                    setFilterPriority(null);
-                    setIsSidebarOpen(false);
-                  }}
+                 onClick={() => {
+  dispatch(setActiveBoardId(board.id));
+  setFilterPriority(null);
+  setIsSidebarOpen(false);
+}}
                 >
                   <div className={styles.boardName}>
                     <img src={board.icon || projectIcon} alt="" />
@@ -281,10 +348,10 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          <button type="button" className={styles.logoutBtn}>
-            <img src={logoutIcon} alt="" />
-            <span>Log out</span>
-          </button>
+          <button type="button" className={styles.logoutBtn} onClick={handleLogout}>
+  <img src={logoutIcon} alt="" />
+  <span>Log out</span>
+</button>
         </div>
       </aside>
 

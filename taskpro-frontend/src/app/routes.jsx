@@ -4,6 +4,7 @@ import LoginPage from '../pages/LoginPage/LoginPage';
 import RegisterPage from '../pages/RegisterPage/RegisterPage';
 import DashboardPage from '../pages/DashboardPage/DashboardPage';
 import NotFoundPage from '../pages/NotFoundPage/NotFoundPage';
+import PrivateRoute from '../components/PrivateRoute/PrivateRoute';
 
 export default function AppRoutes() {
   return (
@@ -11,7 +12,16 @@ export default function AppRoutes() {
       <Route path="/" element={<WelcomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
+
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute>
+            <DashboardPage />
+          </PrivateRoute>
+        }
+      />
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
