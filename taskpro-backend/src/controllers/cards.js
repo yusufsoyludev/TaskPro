@@ -46,7 +46,7 @@ export const moveCardController = async (req, res) => {
   const { targetColumnId } = req.body;
   const userId = req.user._id;
   const card = await moveCard(cardId, targetColumnId, userId);
-  req.status(200).json({
+  res.status(200).json({
     status: 200,
     message: "Card moved successfully",
     data: card,

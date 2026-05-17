@@ -15,6 +15,7 @@ export default function ColumnCard({
   onAddCard,
   onDeleteCard,
   onEditCard,
+  onMoveCard,
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -69,6 +70,7 @@ export default function ColumnCard({
                     card={card}
                     onEdit={card => onEditCard(card)}
                     onDelete={cardId => onDeleteCard(cardId)}
+                     onMove={cardId => onMoveCard(cardId)}
                   />
                 ))}
               </div>

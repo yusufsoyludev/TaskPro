@@ -1,0 +1,126 @@
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { api } from '../../services/api';
+
+const priorityMap = {
+  gray: 'without',
+  green: 'low',
+  pink: 'medium',
+  purple: 'high',
+};
+
+const labelColorMap = {
+  without: 'gray',
+  low: 'green',
+  medium: 'pink',
+  high: 'purple',
+};
+
+const normalizeCard = card => ({
+  ...card,
+  id: card.id || card._id,
+  columnId: card.columnId || card.column,
+  labelColor: card.labelColor || labelColorMap[card.priority] || 'gray',
+});
+
+const prepareCardData = cardData => {
+  const allowedData = { ...cardData };
+
+  delete allowedData._id;
+  delete allowedData.id;
+  delete allowedData.columnId;
+  delete allowedData.column;
+  delete allowedData.order;
+  delete allowedData.createdAt;
+  delete allowedData.updatedAt;
+
+  if ('labelColor' in allowedData) {
+    allowedData.priority = priorityMap[allowedData.labelColor] || 'without';
+    delete allowedData.labelColor;
+  }
+
+  return allowedData;
+};
+
+export const fetchCards = createAsyncThunk(
+  'cards/fetchByColumn',
+  async (columnId, thunkAPI) => {
+    try {
+      const { data } = await api.get(`/cards/${columnId}`);
+      const cards = data.data || data;
+
+      return {
+        columnId,
+        cards: cards.map(normalizeCard),
+      };
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
+    }
+  },
+);
+
+export const createCard = createAsyncThunk(
+  'cards/create',
+  
+  async ({ columnId, cardData }, thunkAPI) => {
+    try {
+      const { data } = await api.post('/cards', {
+  columnId,
+  ...prepareCardData(cardData),
+});
+
+      return normalizeCard(data.data || data);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
+    }
+  },
+);
+
+export const updateCard = createAsyncThunk(
+  'cards/update',
+  async ({ cardId, cardData }, thunkAPI) => {
+    try {
+     const { data } = await api.patch(`/cards/${cardId}`, prepareCardData(cardData));
+
+      return normalizeCard(data.data || data);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
+    }
+  },
+);
+
+export const deleteCard = createAsyncThunk(
+  'cards/delete',
+  async (cardId, thunkAPI) => {
+    try {
+      await api.delete(`/cards/${cardId}`);
+      return cardId;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
+    }
+  },
+);
+
+export const moveCard = createAsyncThunk(
+  'cards/move',
+  async ({ cardId, targetColumnId }, thunkAPI) => {
+    try {
+      const { data } = await api.patch(`/cards/${cardId}/move`, {
+        targetColumnId,
+      });
+
+      return normalizeCard(data.data || data);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
+    }
+  },
+);

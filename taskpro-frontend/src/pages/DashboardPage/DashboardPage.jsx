@@ -1,3 +1,22 @@
+
+import { selectCardsByColumnMap } from '../../features/cards/cardsSelectors';
+import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  MouseSensor,
+  TouchSensor,
+} from '@dnd-kit/core';
+import Card from './Card';
+import {
+  fetchCards,
+  createCard,
+  updateCard,
+  deleteCard,
+  moveCard,
+} from '../../features/cards/cardsOperations';
+
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -65,6 +84,9 @@ export default function DashboardPage() {
   const boards = useSelector(selectBoards);
 const activeBoard = useSelector(selectActiveBoard);
 const activeBoardId = useSelector(selectActiveBoardId);
+ const columns = useSelector(selectColumns);
+  const cardsByColumnId = useSelector(selectCardsByColumnMap);
+  
 const navigate = useNavigate();
 useEffect(() => {
   if (!token) return;
@@ -77,6 +99,12 @@ useEffect(() => {
 
   dispatch(fetchColumns(activeBoardId));
 }, [dispatch, activeBoardId]);
+useEffect(() => {
+  columns.forEach(column => {
+    dispatch(fetchCards(column.id));
+  });
+}, [dispatch, columns]);
+
 
 const handleLogout = async () => {
   const result = await dispatch(logout());
@@ -98,16 +126,48 @@ const handleLogout = async () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  const [activeDragCard, setActiveDragCard] = useState(null);
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    })
+  );
+
   const [user, setUser] = useState({ name: 'Ivetta', avatarUrl: null });
   
 
   
-  const columns = useSelector(selectColumns);
+ 
 
-  const updateActiveBoard = updater => {
-    setBoards(prev =>
-      prev.map(b => (b.id === activeBoardId ? updater(b) : b)),
-    );
+const columnsWithCards = columns.map(column => ({
+  ...column,
+  cards: cardsByColumnId[column.id] || [],
+}));
+
+ 
+
+  const handleDragStart = event => {
+    const { active } = event;
+    if (active.data.current?.type === 'card') {
+      setActiveDragCard(active.data.current.card);
+    }
+  };
+
+ const handleDragEnd = () => {
+  setActiveDragCard(null);
+};
+
+  const handleDragCancel = () => {
+    setActiveDragCard(null);
   };
 
   const handleSaveProfile = updated => {
@@ -188,51 +248,72 @@ const handleLogout = async () => {
     setIsAddCardModalOpen(true);
   };
 
-  const handleAddCard = cardData => {
-    const newCard = { id: crypto.randomUUID(), ...cardData };
-    updateActiveBoard(b => ({
-      ...b,
-      columns: b.columns.map(col =>
-        col.id === activeCardColumnId
-          ? { ...col, cards: [...(col.cards ?? []), newCard] }
-          : col,
-      ),
-    }));
+ const handleAddCard = async cardData => {
+  const result = await dispatch(
+    createCard({
+      columnId: activeCardColumnId,
+      cardData,
+    }),
+  );
+
+  if (createCard.fulfilled.match(result)) {
     setIsAddCardModalOpen(false);
     setActiveCardColumnId(null);
-  };
+    dispatch(fetchCards(activeCardColumnId));
+  }
+};
 
-  const handleDeleteCard = (columnId, cardId) => {
-    updateActiveBoard(b => ({
-      ...b,
-      columns: b.columns.map(col =>
-        col.id === columnId
-          ? { ...col, cards: col.cards.filter(c => c.id !== cardId) }
-          : col,
-      ),
-    }));
-  };
+  const handleDeleteCard = async (columnId, cardId) => {
+  const result = await dispatch(deleteCard(cardId));
+
+  if (deleteCard.fulfilled.match(result)) {
+    dispatch(fetchCards(columnId));
+  }
+};
+const handleMoveCard = async cardId => {
+  const currentColumn = columns.find(column =>
+    (cardsByColumnId[column.id] || []).some(card => card.id === cardId),
+  );
+
+  const targetColumnId = columns.find(
+    column => column.id !== currentColumn?.id,
+  )?.id;
+
+  if (!targetColumnId) return;
+
+  const result = await dispatch(
+    moveCard({
+      cardId,
+      targetColumnId,
+    }),
+  );
+
+  if (moveCard.fulfilled.match(result)) {
+    if (currentColumn?.id) {
+      dispatch(fetchCards(currentColumn.id));
+    }
+
+    dispatch(fetchCards(targetColumnId));
+  }
+};
 
   const handleEditCard = (columnId, card) => {
     setEditingCard({ card, columnId });
   };
 
-  const handleSaveCard = updatedCard => {
-    updateActiveBoard(b => ({
-      ...b,
-      columns: b.columns.map(col =>
-        col.id === editingCard.columnId
-          ? {
-              ...col,
-              cards: col.cards.map(c =>
-                c.id === updatedCard.id ? updatedCard : c,
-              ),
-            }
-          : col,
-      ),
-    }));
+  const handleSaveCard = async updatedCard => {
+  const result = await dispatch(
+    updateCard({
+      cardId: updatedCard.id,
+      cardData: updatedCard,
+    }),
+  );
+
+  if (updateCard.fulfilled.match(result)) {
+    dispatch(fetchCards(editingCard.columnId));
     setEditingCard(null);
-  };
+  }
+};
 
   return (
     <div className={styles.page}>
@@ -348,10 +429,31 @@ const handleLogout = async () => {
             </button>
           </div>
 
-          <button type="button" className={styles.logoutBtn} onClick={handleLogout}>
-  <img src={logoutIcon} alt="" />
-  <span>Log out</span>
-</button>
+          <button 
+            type="button" 
+            className={styles.logoutBtn} 
+            onPointerDown={(e) => {
+              e.currentTarget.dataset.startX = e.clientX;
+              e.currentTarget.dataset.startY = e.clientY;
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              
+              const startX = parseFloat(e.currentTarget.dataset.startX || e.clientX);
+              const startY = parseFloat(e.currentTarget.dataset.startY || e.clientY);
+              
+              // Move distance check to prevent swipe from triggering logout
+              if (Math.abs(e.clientX - startX) > 15 || Math.abs(e.clientY - startY) > 15) {
+                return;
+              }
+              
+              handleLogout();
+            }}
+          >
+            <img src={logoutIcon} alt="" />
+            <span>Log out</span>
+          </button>
         </div>
       </aside>
 
@@ -427,8 +529,14 @@ const handleLogout = async () => {
           </div>
 
           {activeBoard ? (
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
             <div className={styles.boardWorkspace}>
-              {columns.map(column => (
+              {columnsWithCards.map(column => (
                 <ColumnCard
                   key={column.id}
                   column={column}
@@ -438,6 +546,7 @@ const handleLogout = async () => {
                   onAddCard={event => handleOpenAddCard(column.id, event)}
                   onDeleteCard={cardId => handleDeleteCard(column.id, cardId)}
                   onEditCard={card => handleEditCard(column.id, card)}
+                   onMoveCard={handleMoveCard}
                 />
               ))}
 
@@ -454,6 +563,14 @@ const handleLogout = async () => {
                 </button>
               </div>
             </div>
+            <DragOverlay>
+              {activeDragCard ? (
+                <div style={{ pointerEvents: 'none' }}>
+                  <Card card={activeDragCard} isOverlay />
+                </div>
+              ) : null}
+            </DragOverlay>
+            </DndContext>
           ) : (
             <p className={styles.emptyText}>
               Before starting your project, it is essential{' '}

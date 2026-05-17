@@ -10,6 +10,7 @@ import {
   PURGE,
   REGISTER,
 } from 'redux-persist';
+import { cardsReducer } from '../features/cards/cardsSlice';
 
 import { authReducer } from '../features/auth/authSlice';
 import { boardsReducer } from '../features/boards/boardsSlice';
@@ -33,6 +34,7 @@ export const store = configureStore({
     auth: persistedAuthReducer,
     boards:boardsReducer,
     columns:columnsReducer,
+    cards:cardsReducer,
   },
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
