@@ -39,7 +39,7 @@ export default function RegisterPage() {
     const result = await dispatch(register(formData));
 
     if (register.fulfilled.match(result)) {
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
   };
 

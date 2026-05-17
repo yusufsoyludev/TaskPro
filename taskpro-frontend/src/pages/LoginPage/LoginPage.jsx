@@ -34,7 +34,7 @@ export default function LoginPage() {
     const result = await dispatch(login(formData));
 
     if (login.fulfilled.match(result)) {
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
   };
 

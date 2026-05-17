@@ -30,20 +30,26 @@ function formatDeadline(isoString) {
 
 export default function Card({
   card,
+  columnId,
   onEdit,
   onDelete,
   onMove,
   isOverlay = false,
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
+  const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({
       id: card.id,
       disabled: isOverlay,
       data: {
         type: 'card',
         card,
+        columnId: columnId ?? card.columnId ?? null,
       },
     });
+
+  const stopDragActivation = event => {
+    event.stopPropagation();
+  };
 
   const priority = PRIORITY_MAP[card.labelColor] ?? PRIORITY_MAP.grey;
   const rgb = hexToRgb(priority.color);
@@ -103,6 +109,9 @@ export default function Card({
                 type="button"
                 className={styles.actionBtn}
                 aria-label="Move card"
+                onMouseDown={stopDragActivation}
+                onPointerDown={stopDragActivation}
+                onTouchStart={stopDragActivation}
                 onClick={event => {
                   event.stopPropagation();
                   onMove?.(card.id);
@@ -115,6 +124,9 @@ export default function Card({
                 type="button"
                 className={styles.actionBtn}
                 aria-label="Edit card"
+                onMouseDown={stopDragActivation}
+                onPointerDown={stopDragActivation}
+                onTouchStart={stopDragActivation}
                 onClick={event => {
                   event.stopPropagation();
                   onEdit?.(card);
@@ -127,6 +139,9 @@ export default function Card({
                 type="button"
                 className={styles.actionBtn}
                 aria-label="Delete card"
+                onMouseDown={stopDragActivation}
+                onPointerDown={stopDragActivation}
+                onTouchStart={stopDragActivation}
                 onClick={event => {
                   event.stopPropagation();
                   onDelete?.(card.id);

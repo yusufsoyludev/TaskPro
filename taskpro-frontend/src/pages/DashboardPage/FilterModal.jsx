@@ -1,5 +1,5 @@
 import styles from './FilterModal.module.css';
-import { PRIORITY_MAP, PRIORITY_ORDER } from './priorityConfig';
+import { PRIORITY_MAP,  } from './priorityConfig';
 
 const FILTER_ITEMS = [
   { id: 'grey',   label: 'Without priority' },

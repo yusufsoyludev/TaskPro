@@ -6,6 +6,7 @@ import {
   useSensor,
   useSensors,
   MouseSensor,
+  PointerSensor,
   TouchSensor,
 } from '@dnd-kit/core';
 import Card from './Card';
@@ -128,18 +129,33 @@ const handleLogout = async () => {
 
   const [activeDragCard, setActiveDragCard] = useState(null);
 
+  const hasTouchInput =
+    typeof window !== 'undefined' &&
+    (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 5,
+    },
+  });
+
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 80,
+      tolerance: 6,
+    },
+  });
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 5,
+    },
+  });
+
   const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    })
+    mouseSensor,
+    touchSensor,
+    ...(hasTouchInput ? [] : [pointerSensor]),
   );
 
   const [user, setUser] = useState({ name: 'Ivetta', avatarUrl: null });
@@ -162,8 +178,42 @@ const columnsWithCards = columns.map(column => ({
     }
   };
 
- const handleDragEnd = () => {
+ const handleDragEnd = async event => {
+  const { active, over } = event;
   setActiveDragCard(null);
+
+  if (active.data.current?.type !== 'card' || !over) {
+    return;
+  }
+
+  const cardId = active.data.current?.card?.id ?? active.id;
+  const sourceColumnId =
+    active.data.current?.columnId ??
+    columns.find(column =>
+      (cardsByColumnId[column.id] || []).some(card => card.id === cardId),
+    )?.id;
+  const targetColumnId = over.data.current?.columnId ?? over.id;
+
+  if (
+    !cardId ||
+    !sourceColumnId ||
+    !targetColumnId ||
+    String(sourceColumnId) === String(targetColumnId)
+  ) {
+    return;
+  }
+
+  const result = await dispatch(
+    moveCard({
+      cardId,
+      targetColumnId,
+    }),
+  );
+
+  if (moveCard.fulfilled.match(result)) {
+    dispatch(fetchCards(sourceColumnId));
+    dispatch(fetchCards(targetColumnId));
+  }
 };
 
   const handleDragCancel = () => {
@@ -432,22 +482,8 @@ const handleMoveCard = async cardId => {
           <button 
             type="button" 
             className={styles.logoutBtn} 
-            onPointerDown={(e) => {
-              e.currentTarget.dataset.startX = e.clientX;
-              e.currentTarget.dataset.startY = e.clientY;
-            }}
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
-              e.preventDefault();
-              
-              const startX = parseFloat(e.currentTarget.dataset.startX || e.clientX);
-              const startY = parseFloat(e.currentTarget.dataset.startY || e.clientY);
-              
-              // Move distance check to prevent swipe from triggering logout
-              if (Math.abs(e.clientX - startX) > 15 || Math.abs(e.clientY - startY) > 15) {
-                return;
-              }
-              
               handleLogout();
             }}
           >

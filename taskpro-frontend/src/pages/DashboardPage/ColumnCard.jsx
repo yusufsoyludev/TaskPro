@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import styles from './ColumnCard.module.css';
 
 import plusIcon from '../../assets/svg/plus.svg';
@@ -18,13 +19,20 @@ export default function ColumnCard({
   onMoveCard,
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+    data: {
+      type: 'column',
+      columnId: column.id,
+    },
+  });
 
   const displayCards = filterPriority
     ? (column.cards ?? []).filter(c => c.labelColor === filterPriority)
     : (column.cards ?? []);
 
   return (
-    <div className={styles.columnGroup}>
+    <div ref={setNodeRef} className={styles.columnGroup}>
       <section
         className={styles.columnCard}
         onClick={() => setIsCollapsed(prev => !prev)}
@@ -68,6 +76,7 @@ export default function ColumnCard({
                   <Card
                     key={card.id}
                     card={card}
+                    columnId={column.id}
                     onEdit={card => onEditCard(card)}
                     onDelete={cardId => onDeleteCard(cardId)}
                      onMove={cardId => onMoveCard(cardId)}
