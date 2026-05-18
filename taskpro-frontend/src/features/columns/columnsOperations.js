@@ -20,6 +20,7 @@ export const fetchColumns = createAsyncThunk(
 
       return {
         ownerToken,
+        boardId,
         items: columns.map(normalizeColumn),
       };
     } catch (error) {
@@ -79,11 +80,16 @@ export const deleteColumn = createAsyncThunk(
   "columns/delete",
   async (columnId, thunkAPI) => {
     const ownerToken = getOwnerToken(thunkAPI);
+    const columnsByBoardId = thunkAPI.getState().columns.byBoardId || {};
+    const boardId = Object.values(columnsByBoardId)
+      .flat()
+      .find(column => column.id === columnId)?.boardId ?? null;
 
     try {
       await api.delete(`/columns/${columnId}`);
       return {
         ownerToken,
+        boardId,
         columnId,
       };
     } catch (error) {

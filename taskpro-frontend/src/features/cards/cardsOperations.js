@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 const getOwnerToken = thunkAPI => thunkAPI.getState().auth.token;
 
 const priorityMap = {
+  grey: 'without',
   gray: 'without',
   green: 'low',
   pink: 'medium',
@@ -11,7 +12,7 @@ const priorityMap = {
 };
 
 const labelColorMap = {
-  without: 'gray',
+  without: 'grey',
   low: 'green',
   medium: 'pink',
   high: 'purple',
@@ -21,8 +22,14 @@ const normalizeCard = card => ({
   ...card,
   id: card.id || card._id,
   columnId: card.columnId || card.column,
-  labelColor: card.labelColor || labelColorMap[card.priority] || 'gray',
+  labelColor: card.labelColor || labelColorMap[card.priority] || 'grey',
 });
+
+const extractCardResponse = responseData => {
+  const payload = responseData?.data || responseData;
+
+  return payload?.card || payload;
+};
 
 const prepareCardData = cardData => {
   const allowedData = { ...cardData };
@@ -80,9 +87,14 @@ export const createCard = createAsyncThunk(
   ...prepareCardData(cardData),
 });
 
+      const normalizedCard = normalizeCard(extractCardResponse(data));
+
       return {
         ownerToken,
-        card: normalizeCard(data.data || data),
+        card: {
+          ...normalizedCard,
+          columnId: normalizedCard.columnId || columnId,
+        },
       };
     } catch (error) {
       return thunkAPI.rejectWithValue(
@@ -101,11 +113,14 @@ export const updateCard = createAsyncThunk(
     const ownerToken = getOwnerToken(thunkAPI);
 
     try {
-     const { data } = await api.patch(`/cards/${cardId}`, prepareCardData(cardData));
+      const { data } = await api.patch(
+        `/cards/${cardId}`,
+        prepareCardData(cardData),
+      );
 
       return {
         ownerToken,
-        card: normalizeCard(data.data || data),
+        card: normalizeCard(extractCardResponse(data)),
       };
     } catch (error) {
       return thunkAPI.rejectWithValue(
@@ -150,9 +165,15 @@ export const moveCard = createAsyncThunk(
         targetColumnId,
       });
 
+      const normalizedCard = normalizeCard(extractCardResponse(data));
+
       return {
         ownerToken,
-        card: normalizeCard(data.data || data),
+        targetColumnId,
+        card: {
+          ...normalizedCard,
+          columnId: normalizedCard.columnId || targetColumnId,
+        },
       };
     } catch (error) {
       return thunkAPI.rejectWithValue(

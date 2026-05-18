@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './NewBoardModal.module.css';
 
 import plusIcon from '../../assets/svg/plus.svg';
@@ -12,7 +12,10 @@ import lightningIcon from '../../assets/svg/lightning-02.svg';
 import colorsIcon from '../../assets/svg/colors.svg';
 import hexagonIcon from '../../assets/svg/hexagon-01.svg';
 
-import { BACKGROUNDS } from '../../constants/backgroundConfig';
+import {
+  BACKGROUNDS,
+  loadBackgroundPreviews,
+} from '../../constants/backgroundConfig';
 
 const boardIcons = [
   projectIcon,
@@ -29,14 +32,31 @@ export default function NewBoardModal({ onClose, onCreate }) {
   const [title, setTitle] = useState('');
   const [selectedIconIndex, setSelectedIconIndex] = useState(0);
   const [selectedBgId, setSelectedBgId] = useState('bg-0');
+  const [backgroundPreviews, setBackgroundPreviews] = useState({});
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    loadBackgroundPreviews().then(backgrounds => {
+      if (!isCurrent) return;
+
+      setBackgroundPreviews(
+        Object.fromEntries(
+          backgrounds.map(background => [background.id, background.preview]),
+        ),
+      );
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   const handleCreate = () => {
-    const bg = BACKGROUNDS.find(b => b.id === selectedBgId) ?? BACKGROUNDS[0];
     onCreate({
       title: title.trim() || 'Untitled board',
       icon: boardIcons[selectedIconIndex],
-      background: bg.mobile,
-      bgId: bg.id,
+      bgId: selectedBgId,
       selectedIconIndex,
     });
   };
@@ -87,7 +107,14 @@ export default function NewBoardModal({ onClose, onCreate }) {
               key={bg.id}
               onClick={() => setSelectedBgId(bg.id)}
             >
-              <img src={bg.preview} alt="" />
+              {backgroundPreviews[bg.id] && (
+                <img
+                  src={backgroundPreviews[bg.id]}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
             </button>
           ))}
         </div>

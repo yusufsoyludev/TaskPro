@@ -1,91 +1,172 @@
+const backgroundAssetModules = import.meta.glob([
+  '../assets/block.webp',
+  '../assets/Vector*.webp',
+  '../assets/mobil-*.webp',
+  '../assets/tablet-*.webp',
+  '../assets/pc-*.webp',
+]);
 
-import thumb1  from '../assets/block.webp';
-import thumb2  from '../assets/Vector.webp';
-import thumb3  from '../assets/Vector-1.webp';
-import thumb4  from '../assets/Vector-2.webp';
-import thumb5  from '../assets/Vector-3.webp';
-import thumb6  from '../assets/Vector-4.webp';
-import thumb7  from '../assets/Vector-5.webp';
-import thumb8  from '../assets/Vector-6.webp';
-import thumb9 from '../assets/Vector-7.webp';
-import thumb10  from '../assets/Vector-8.webp';
-import thumb11 from '../assets/Vector-9.webp';
-import thumb12 from '../assets/Vector-10.webp';
-import thumb13 from '../assets/Vector-11.webp';
-import thumb14 from '../assets/Vector-12.webp';
-import thumb15 from '../assets/Vector-13.webp';
-
-
-
-import mobile1  from '../assets/mobil-1.webp';
-import mobile2  from '../assets/mobil-2.webp';
-import mobile3  from '../assets/mobil-3.webp';
-import mobile4  from '../assets/mobil-4.webp';
-import mobile5  from '../assets/mobil-5.webp';
-import mobile6  from '../assets/mobil-6.webp';
-import mobile7  from '../assets/mobil-7.webp';
-import mobile8  from '../assets/mobil-8.webp';
-import mobile9  from '../assets/mobil-9.webp';
-import mobile10 from '../assets/mobil-10.webp';
-import mobile11 from '../assets/mobil-11.webp';
-import mobile12 from '../assets/mobil-12.webp';
-import mobile13 from '../assets/mobil-13.webp';
-import mobile14 from '../assets/mobil-14.webp';
-import mobile15 from '../assets/mobil-15.webp';
-
-
-import tablet1  from '../assets/tablet-1.webp'; 
-import tablet2  from '../assets/tablet-2.webp'; 
-import tablet3  from '../assets/tablet-3.webp'; 
-import tablet4  from '../assets/tablet-4.webp'; 
-import tablet5  from '../assets/tablet-5.webp'; 
-import tablet6  from '../assets/tablet-6.webp'; 
-import tablet7  from '../assets/tablet-7.webp'; 
-import tablet8  from '../assets/tablet-8.webp'; 
-import tablet9  from '../assets/tablet-9.webp'; 
-import tablet10 from '../assets/tablet-10.webp'; 
-import tablet11 from '../assets/tablet-11.webp'; 
-import tablet12 from '../assets/tablet-12.webp'; 
-import tablet13 from '../assets/tablet-13.webp'; 
-import tablet14 from '../assets/tablet-14.webp';
-import tablet15 from '../assets/tablet-15.webp'; 
-
-
-import desktop1  from '../assets/pc-1.webp';   
-import desktop2  from '../assets/pc-2.webp';   
-import desktop3  from '../assets/pc-3.webp';   
-import desktop4  from '../assets/pc-4.webp';   
-import desktop5  from '../assets/pc-5.webp';   
-import desktop6  from '../assets/pc-6.webp';   
-import desktop7  from '../assets/pc-7.webp';   
-import desktop8  from '../assets/pc-8.webp';   
-import desktop9  from '../assets/pc-9.webp';   
-import desktop10 from '../assets/pc-10.webp';  
-import desktop11 from '../assets/pc-11.webp';  
-import desktop12 from '../assets/pc-12.webp';  
-import desktop13 from '../assets/pc-13.webp';  
-import desktop14 from '../assets/pc-14.webp';  
-import desktop15 from '../assets/pc-15.webp';
-
+const backgroundAssetCache = new Map();
 
 export const BACKGROUNDS = [
-  { id: 'bg-0',  preview: thumb1,  mobile: null,     tablet: null,     desktop: null     },
-  { id: 'bg-1',  preview: thumb2,  mobile: mobile1,  tablet: tablet1,  desktop: desktop1  },
-  { id: 'bg-2',  preview: thumb3,  mobile: mobile2,  tablet: tablet2,  desktop: desktop2  },
-  { id: 'bg-3',  preview: thumb4,  mobile: mobile3,  tablet: tablet3,  desktop: desktop3  },
-  { id: 'bg-4',  preview: thumb5,  mobile: mobile4,  tablet: tablet4,  desktop: desktop4  },
-  { id: 'bg-5',  preview: thumb6,  mobile: mobile5,  tablet: tablet5,  desktop: desktop5  },
-  { id: 'bg-6',  preview: thumb7,  mobile: mobile6,  tablet: tablet6,  desktop: desktop6  },
-  { id: 'bg-7',  preview: thumb8,  mobile: mobile7,  tablet: tablet7,  desktop: desktop7  },
-  { id: 'bg-8',  preview: thumb9,  mobile: mobile8,  tablet: tablet8,  desktop: desktop8  },
-  { id: 'bg-9',  preview: thumb10,  mobile: mobile9,  tablet: tablet9,  desktop: desktop9  },
-  { id: 'bg-10', preview: thumb11, mobile: mobile10, tablet: tablet10, desktop: desktop10 },
-  { id: 'bg-11', preview: thumb12, mobile: mobile11, tablet: tablet11, desktop: desktop11 },
-  { id: 'bg-12', preview: thumb13, mobile: mobile12, tablet: tablet12, desktop: desktop12 },
-  { id: 'bg-13', preview: thumb14, mobile: mobile13, tablet: tablet13, desktop: desktop13 },
-  { id: 'bg-14', preview: thumb15, mobile: mobile14, tablet: tablet14, desktop: desktop14 },
-  
+  {
+    id: 'bg-0',
+    previewFile: 'block.webp',
+    mobileFile: null,
+    tabletFile: null,
+    desktopFile: null,
+  },
+  {
+    id: 'bg-1',
+    previewFile: 'Vector.webp',
+    mobileFile: 'mobil-1.webp',
+    tabletFile: 'tablet-1.webp',
+    desktopFile: 'pc-1.webp',
+  },
+  {
+    id: 'bg-2',
+    previewFile: 'Vector-1.webp',
+    mobileFile: 'mobil-2.webp',
+    tabletFile: 'tablet-2.webp',
+    desktopFile: 'pc-2.webp',
+  },
+  {
+    id: 'bg-3',
+    previewFile: 'Vector-2.webp',
+    mobileFile: 'mobil-3.webp',
+    tabletFile: 'tablet-3.webp',
+    desktopFile: 'pc-3.webp',
+  },
+  {
+    id: 'bg-4',
+    previewFile: 'Vector-3.webp',
+    mobileFile: 'mobil-4.webp',
+    tabletFile: 'tablet-4.webp',
+    desktopFile: 'pc-4.webp',
+  },
+  {
+    id: 'bg-5',
+    previewFile: 'Vector-4.webp',
+    mobileFile: 'mobil-5.webp',
+    tabletFile: 'tablet-5.webp',
+    desktopFile: 'pc-5.webp',
+  },
+  {
+    id: 'bg-6',
+    previewFile: 'Vector-5.webp',
+    mobileFile: 'mobil-6.webp',
+    tabletFile: 'tablet-6.webp',
+    desktopFile: 'pc-6.webp',
+  },
+  {
+    id: 'bg-7',
+    previewFile: 'Vector-6.webp',
+    mobileFile: 'mobil-7.webp',
+    tabletFile: 'tablet-7.webp',
+    desktopFile: 'pc-7.webp',
+  },
+  {
+    id: 'bg-8',
+    previewFile: 'Vector-7.webp',
+    mobileFile: 'mobil-8.webp',
+    tabletFile: 'tablet-8.webp',
+    desktopFile: 'pc-8.webp',
+  },
+  {
+    id: 'bg-9',
+    previewFile: 'Vector-8.webp',
+    mobileFile: 'mobil-9.webp',
+    tabletFile: 'tablet-9.webp',
+    desktopFile: 'pc-9.webp',
+  },
+  {
+    id: 'bg-10',
+    previewFile: 'Vector-9.webp',
+    mobileFile: 'mobil-10.webp',
+    tabletFile: 'tablet-10.webp',
+    desktopFile: 'pc-10.webp',
+  },
+  {
+    id: 'bg-11',
+    previewFile: 'Vector-10.webp',
+    mobileFile: 'mobil-11.webp',
+    tabletFile: 'tablet-11.webp',
+    desktopFile: 'pc-11.webp',
+  },
+  {
+    id: 'bg-12',
+    previewFile: 'Vector-11.webp',
+    mobileFile: 'mobil-12.webp',
+    tabletFile: 'tablet-12.webp',
+    desktopFile: 'pc-12.webp',
+  },
+  {
+    id: 'bg-13',
+    previewFile: 'Vector-12.webp',
+    mobileFile: 'mobil-13.webp',
+    tabletFile: 'tablet-13.webp',
+    desktopFile: 'pc-13.webp',
+  },
+  {
+    id: 'bg-14',
+    previewFile: 'Vector-13.webp',
+    mobileFile: 'mobil-14.webp',
+    tabletFile: 'tablet-14.webp',
+    desktopFile: 'pc-14.webp',
+  },
 ];
 
+const loadBackgroundAssetUrl = async fileName => {
+  if (!fileName) return null;
 
-export const findBgById = id => BACKGROUNDS.find(b => b.id === id) ?? BACKGROUNDS[0];
+  if (backgroundAssetCache.has(fileName)) {
+    return backgroundAssetCache.get(fileName);
+  }
+
+  const assetLoader = backgroundAssetModules[`../assets/${fileName}`];
+
+  if (!assetLoader) {
+    return null;
+  }
+
+  const assetModule = await assetLoader();
+  const assetUrl = assetModule.default;
+
+  backgroundAssetCache.set(fileName, assetUrl);
+
+  return assetUrl;
+};
+
+const getBackgroundAssetFile = (background, variant) => {
+  if (variant === 'desktop') {
+    return (
+      background.desktopFile ?? background.tabletFile ?? background.mobileFile
+    );
+  }
+
+  if (variant === 'tablet') {
+    return (
+      background.tabletFile ?? background.mobileFile ?? background.desktopFile
+    );
+  }
+
+  return background.mobileFile ?? background.tabletFile ?? background.desktopFile;
+};
+
+export const findBgById = id =>
+  BACKGROUNDS.find(background => background.id === id) ?? BACKGROUNDS[0];
+
+export const loadBackgroundVariantById = async (id, variant) => {
+  const background = findBgById(id);
+  const fileName = getBackgroundAssetFile(background, variant);
+
+  return loadBackgroundAssetUrl(fileName);
+};
+
+export const loadBackgroundPreviews = async () =>
+  Promise.all(
+    BACKGROUNDS.map(async background => ({
+      ...background,
+      preview: await loadBackgroundAssetUrl(background.previewFile),
+    })),
+  );

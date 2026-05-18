@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import styles from './Card.module.css';
 import { PRIORITY_MAP } from './priorityConfig';
@@ -29,7 +29,7 @@ function formatDeadline(isoString) {
   return `${day}/${month}/${year}`;
 }
 
-export default function Card({
+function Card({
   card,
   columnId,
   onEdit,
@@ -48,17 +48,51 @@ export default function Card({
       },
     });
 
-  const stopDragActivation = event => {
+  const stopDragActivation = useCallback(event => {
     event.stopPropagation();
-  };
+  }, []);
 
-  const priority = PRIORITY_MAP[card.labelColor] ?? PRIORITY_MAP.grey;
-  const rgb = hexToRgb(priority.color);
+  const priority = useMemo(
+    () => PRIORITY_MAP[card.labelColor] ?? PRIORITY_MAP.grey,
+    [card.labelColor],
+  );
+  const rgb = useMemo(() => hexToRgb(priority.color), [priority.color]);
+  const formattedDeadline = useMemo(
+    () => formatDeadline(card.deadline),
+    [card.deadline],
+  );
 
-  const dragStyle = {
-    ...(!isOverlay && isDragging ? { opacity: 0 } : {}),
-    ...(!isOverlay ? { touchAction: 'manipulation' } : {}),
-  };
+  const dragStyle = useMemo(
+    () => ({
+      ...(!isOverlay && isDragging ? { opacity: 0 } : {}),
+      ...(!isOverlay ? { touchAction: 'manipulation' } : {}),
+    }),
+    [isDragging, isOverlay],
+  );
+
+  const handleToggleCompleted = useCallback(
+    event => {
+      event.stopPropagation();
+      setIsCompleted(prev => !prev);
+    },
+    [],
+  );
+
+  const handleEdit = useCallback(
+    event => {
+      event.stopPropagation();
+      onEdit?.(card);
+    },
+    [card, onEdit],
+  );
+
+  const handleDelete = useCallback(
+    event => {
+      event.stopPropagation();
+      onDelete?.(card.id);
+    },
+    [card.id, onDelete],
+  );
 
   return (
     <article
@@ -98,9 +132,7 @@ export default function Card({
             <div className={styles.metaItem}>
               <span className={styles.metaLabel}>Deadline</span>
 
-              <span className={styles.metaText}>
-                {formatDeadline(card.deadline)}
-              </span>
+              <span className={styles.metaText}>{formattedDeadline}</span>
             </div>
           </div>
 
@@ -117,10 +149,7 @@ export default function Card({
                 onMouseDown={stopDragActivation}
                 onPointerDown={stopDragActivation}
                 onTouchStart={stopDragActivation}
-                onClick={event => {
-                  event.stopPropagation();
-                  setIsCompleted(prev => !prev);
-                }}
+                onClick={handleToggleCompleted}
               >
                 <img src={moveIcon} alt="" />
               </button>
@@ -132,10 +161,7 @@ export default function Card({
                 onMouseDown={stopDragActivation}
                 onPointerDown={stopDragActivation}
                 onTouchStart={stopDragActivation}
-                onClick={event => {
-                  event.stopPropagation();
-                  onEdit?.(card);
-                }}
+                onClick={handleEdit}
               >
                 <img src={pencilIcon} alt="" />
               </button>
@@ -147,10 +173,7 @@ export default function Card({
                 onMouseDown={stopDragActivation}
                 onPointerDown={stopDragActivation}
                 onTouchStart={stopDragActivation}
-                onClick={event => {
-                  event.stopPropagation();
-                  onDelete?.(card.id);
-                }}
+                onClick={handleDelete}
               >
                 <img src={trashIcon} alt="" />
               </button>
@@ -171,3 +194,5 @@ export default function Card({
     </article>
   );
 }
+
+export default memo(Card);

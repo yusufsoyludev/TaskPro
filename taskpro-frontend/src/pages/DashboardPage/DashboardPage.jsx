@@ -1,5 +1,9 @@
 
-import { selectCardsByColumnMap } from '../../features/cards/cardsSelectors';
+import {
+  selectCardsByColumnMap,
+  selectLoadedCardColumnIds,
+  selectLoadingCardColumnIds,
+} from '../../features/cards/cardsSelectors';
 import {
   DndContext,
   DragOverlay,
@@ -18,7 +22,7 @@ import {
   moveCard,
 } from '../../features/cards/cardsOperations';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -64,7 +68,12 @@ import EditCardModal from './EditCardModal';
 import FilterModal from './FilterModal';
 import EditProfileModal from './EditProfileModal';
 import ColumnCard from './ColumnCard';
-import { selectColumns } from '../../features/columns/columnsSelectors';
+import {
+  selectColumns,
+  selectColumnsByBoardMap,
+  selectLoadedBoardIds,
+  selectLoadingBoardIds,
+} from '../../features/columns/columnsSelectors';
 
 
 import iconLogo from '../../assets/svg/icon.svg';
@@ -82,46 +91,72 @@ import trashIcon from '../../assets/svg/trash-04.svg';
 import cactusImg from '../../assets/2.webp';
 import userImg from '../../assets/user.webp';
 
-import { findBgById } from '../../constants/backgroundConfig';
+import { loadBackgroundVariantById } from '../../constants/backgroundConfig';
+
+const getBackgroundVariantForViewport = () => {
+  if (typeof window === 'undefined') return 'mobile';
+  if (window.innerWidth >= 1440) return 'desktop';
+  if (window.innerWidth >= 768) return 'tablet';
+  return 'mobile';
+};
+
+const preloadBoardBackground = src =>
+  new Promise(resolve => {
+    if (!src) {
+      resolve(null);
+      return;
+    }
+
+    const image = new Image();
+    image.src = src;
+
+    if (image.complete) {
+      resolve(src);
+      return;
+    }
+
+    image.onload = () => resolve(src);
+    image.onerror = () => resolve(src);
+  });
+
+const scheduleIdleTask = callback => {
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    const taskId = window.requestIdleCallback(callback, { timeout: 1500 });
+
+    return () => window.cancelIdleCallback(taskId);
+  }
+
+  const taskId = window.setTimeout(callback, 250);
+
+  return () => window.clearTimeout(taskId);
+};
 
 export default function DashboardPage() {
-  const token=useSelector(selectToken);
+  const token = useSelector(selectToken);
   const authUser = useSelector(selectUser);
   const isRefreshing = useSelector(selectIsRefreshing);
   const dispatch = useDispatch();
   const boards = useSelector(selectBoards);
   const isBoardsLoading = useSelector(selectBoardsLoading);
-const activeBoard = useSelector(selectActiveBoard);
-const activeBoardId = useSelector(selectActiveBoardId);
- const columns = useSelector(selectColumns);
+  const activeBoard = useSelector(selectActiveBoard);
+  const activeBoardId = useSelector(selectActiveBoardId);
+  const loadedBoardIds = useSelector(selectLoadedBoardIds);
+  const loadingBoardIds = useSelector(selectLoadingBoardIds);
+  const columns = useSelector(selectColumns);
+  const columnsByBoardId = useSelector(selectColumnsByBoardMap);
   const cardsByColumnId = useSelector(selectCardsByColumnMap);
-  
-const navigate = useNavigate();
-useEffect(() => {
-  if (!token || isRefreshing || !authUser) return;
+  const loadedCardColumnIds = useSelector(selectLoadedCardColumnIds);
+  const loadingCardColumnIds = useSelector(selectLoadingCardColumnIds);
 
-  setAuthHeader(token);
-  dispatch(fetchBoards());
-}, [authUser, dispatch, isRefreshing, token]);
-useEffect(() => {
-  if (!activeBoardId) return;
-
-  dispatch(fetchColumns(activeBoardId));
-}, [dispatch, activeBoardId]);
-useEffect(() => {
-  columns.forEach(column => {
-    dispatch(fetchCards(column.id));
+  const navigate = useNavigate();
+  const prefetchedBackgroundKeysRef = useRef(new Set());
+  const [backgroundVariant, setBackgroundVariant] = useState(
+    getBackgroundVariantForViewport,
+  );
+  const [loadedBoardBackground, setLoadedBoardBackground] = useState({
+    key: null,
+    url: null,
   });
-}, [dispatch, columns]);
-
-
-const handleLogout = async () => {
-  const result = await dispatch(logout());
-
-  if (logout.fulfilled.match(result)) {
-    navigate('/login');
-  }
-};
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
   const [isEditBoardModalOpen, setIsEditBoardModalOpen] = useState(false);
@@ -134,8 +169,286 @@ const handleLogout = async () => {
   const [filterPriority, setFilterPriority] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
   const [activeDragCard, setActiveDragCard] = useState(null);
+
+  const user = useMemo(
+    () => ({
+      name: authUser?.name || authUser?.email || '',
+      avatarUrl:
+        authUser?.avatarUrl || authUser?.avatarURL || authUser?.avatar || null,
+    }),
+    [authUser],
+  );
+
+  const columnsWithCards = useMemo(
+    () =>
+      columns.map(column => ({
+        ...column,
+        cards: cardsByColumnId[column.id] || [],
+      })),
+    [cardsByColumnId, columns],
+  );
+
+  const cardColumnIdByCardId = useMemo(() => {
+    const nextMap = {};
+
+    columnsWithCards.forEach(column => {
+      column.cards.forEach(card => {
+        nextMap[card.id] = column.id;
+      });
+    });
+
+    return nextMap;
+  }, [columnsWithCards]);
+
+  const missingCardColumnIds = useMemo(
+    () =>
+      columns
+        .map(column => column.id)
+        .filter(
+          columnId =>
+            !loadedCardColumnIds[columnId] && !loadingCardColumnIds[columnId],
+        ),
+    [columns, loadedCardColumnIds, loadingCardColumnIds],
+  );
+
+  const prefetchedBoardIds = useMemo(
+    () =>
+      boards
+        .filter(
+          board =>
+            board.id !== activeBoardId &&
+            !loadedBoardIds[board.id] &&
+            !loadingBoardIds[board.id],
+        )
+        .map(board => board.id),
+    [activeBoardId, boards, loadedBoardIds, loadingBoardIds],
+  );
+
+  const backgroundPrefetchBoards = useMemo(
+    () =>
+      boards.filter(board => board.id !== activeBoardId && board.bgId),
+    [activeBoardId, boards],
+  );
+
+  const prefetchedCardColumnIds = useMemo(() => {
+    const nextColumnIds = new Set();
+
+    Object.entries(columnsByBoardId).forEach(([boardId, boardColumns]) => {
+      if (String(boardId) === String(activeBoardId)) {
+        return;
+      }
+
+      (boardColumns || []).forEach(column => {
+        if (
+          !loadedCardColumnIds[column.id] &&
+          !loadingCardColumnIds[column.id]
+        ) {
+          nextColumnIds.add(column.id);
+        }
+      });
+    });
+
+    return Array.from(nextColumnIds);
+  }, [
+    activeBoardId,
+    columnsByBoardId,
+    loadedCardColumnIds,
+    loadingCardColumnIds,
+  ]);
+
+  const areActiveBoardCardsReady = useMemo(
+    () => columns.every(column => loadedCardColumnIds[column.id]),
+    [columns, loadedCardColumnIds],
+  );
+
+  const isActiveBoardReady = useMemo(() => {
+    if (!activeBoardId || !loadedBoardIds[activeBoardId]) {
+      return false;
+    }
+
+    return areActiveBoardCardsReady;
+  }, [activeBoardId, areActiveBoardCardsReady, loadedBoardIds]);
+
+  const activeBackgroundKey = activeBoard?.bgId
+    ? `${activeBoard.bgId}:${backgroundVariant}`
+    : null;
+
+  const backgroundStyle = useMemo(
+    () => ({
+      '--board-bg':
+        activeBackgroundKey &&
+        loadedBoardBackground.key === activeBackgroundKey &&
+        loadedBoardBackground.url
+          ? `url(${loadedBoardBackground.url})`
+          : 'none',
+    }),
+    [activeBackgroundKey, loadedBoardBackground],
+  );
+
+  useEffect(() => {
+    if (!token || isRefreshing) return;
+
+    setAuthHeader(token);
+    dispatch(fetchBoards());
+  }, [dispatch, isRefreshing, token]);
+
+  useEffect(() => {
+    if (
+      !activeBoardId ||
+      loadedBoardIds[activeBoardId] ||
+      loadingBoardIds[activeBoardId]
+    ) {
+      return;
+    }
+
+    dispatch(fetchColumns(activeBoardId));
+  }, [activeBoardId, dispatch, loadedBoardIds, loadingBoardIds]);
+
+  useEffect(() => {
+    missingCardColumnIds.forEach(columnId => {
+      dispatch(fetchCards(columnId));
+    });
+  }, [dispatch, missingCardColumnIds]);
+
+  useEffect(() => {
+    if (!isActiveBoardReady) {
+      return;
+    }
+
+    if (prefetchedBoardIds.length === 0) {
+      return;
+    }
+
+    let isCancelled = false;
+    const cancelTask = scheduleIdleTask(() => {
+      if (isCancelled) {
+        return;
+      }
+
+      prefetchedBoardIds.forEach(boardId => {
+        dispatch(fetchColumns(boardId));
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+      cancelTask();
+    };
+  }, [dispatch, isActiveBoardReady, prefetchedBoardIds]);
+
+  useEffect(() => {
+    if (!isActiveBoardReady) {
+      return;
+    }
+
+    if (missingCardColumnIds.length > 0 || prefetchedCardColumnIds.length === 0) {
+      return;
+    }
+
+    let isCancelled = false;
+    const cancelTask = scheduleIdleTask(() => {
+      if (isCancelled) {
+        return;
+      }
+
+      prefetchedCardColumnIds.forEach(columnId => {
+        dispatch(fetchCards(columnId));
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+      cancelTask();
+    };
+  }, [
+    dispatch,
+    isActiveBoardReady,
+    missingCardColumnIds.length,
+    prefetchedCardColumnIds,
+  ]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const nextVariant = getBackgroundVariantForViewport();
+      setBackgroundVariant(currentVariant =>
+        currentVariant === nextVariant ? currentVariant : nextVariant,
+      );
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    if (!activeBackgroundKey || !activeBoard?.bgId) {
+      return () => {
+        isCurrent = false;
+      };
+    }
+
+    loadBackgroundVariantById(activeBoard.bgId, backgroundVariant)
+      .then(preloadBoardBackground)
+      .then(backgroundUrl => {
+        if (!isCurrent) return;
+
+        setLoadedBoardBackground(currentBackground =>
+          currentBackground.key === activeBackgroundKey &&
+          currentBackground.url === backgroundUrl
+            ? currentBackground
+            : {
+                key: activeBackgroundKey,
+                url: backgroundUrl,
+              },
+        );
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeBackgroundKey, activeBoard?.bgId, backgroundVariant]);
+
+  useEffect(() => {
+    if (!isActiveBoardReady) {
+      return;
+    }
+
+    if (backgroundPrefetchBoards.length === 0) {
+      return;
+    }
+
+    let isCancelled = false;
+    const cancelTask = scheduleIdleTask(() => {
+      if (isCancelled) {
+        return;
+      }
+
+      backgroundPrefetchBoards.forEach(board => {
+        const backgroundKey = `${board.bgId}:${backgroundVariant}`;
+
+        if (prefetchedBackgroundKeysRef.current.has(backgroundKey)) {
+          return;
+        }
+
+        prefetchedBackgroundKeysRef.current.add(backgroundKey);
+        loadBackgroundVariantById(board.bgId, backgroundVariant)
+          .then(preloadBoardBackground)
+          .catch(() => {
+            prefetchedBackgroundKeysRef.current.delete(backgroundKey);
+          });
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+      cancelTask();
+    };
+  }, [backgroundPrefetchBoards, backgroundVariant, isActiveBoardReady]);
 
   const hasTouchInput =
     typeof window !== 'undefined' &&
@@ -165,216 +478,248 @@ const handleLogout = async () => {
     touchSensor,
     ...(hasTouchInput ? [] : [pointerSensor]),
   );
+  const handleLogout = useCallback(async () => {
+    const result = await dispatch(logout());
 
- const user = {
-  name: authUser?.name || authUser?.email || '',
-  avatarUrl:
-    authUser?.avatarUrl || authUser?.avatarURL || authUser?.avatar || null,
-};
-  
+    if (logout.fulfilled.match(result)) {
+      navigate('/login');
+    }
+  }, [dispatch, navigate]);
 
-  
- 
-
-const columnsWithCards = columns.map(column => ({
-  ...column,
-  cards: cardsByColumnId[column.id] || [],
-}));
-
- 
-
-  const handleDragStart = event => {
+  const handleDragStart = useCallback(event => {
     const { active } = event;
+
     if (active.data.current?.type === 'card') {
       setActiveDragCard(active.data.current.card);
     }
-  };
+  }, []);
 
- const handleDragEnd = async event => {
-  const { active, over } = event;
-  setActiveDragCard(null);
+  const handleDragEnd = useCallback(
+    async event => {
+      const { active, over } = event;
+      setActiveDragCard(null);
 
-  if (active.data.current?.type !== 'card' || !over) {
-    return;
-  }
+      if (active.data.current?.type !== 'card' || !over) {
+        return;
+      }
 
-  const cardId = active.data.current?.card?.id ?? active.id;
-  const sourceColumnId =
-    active.data.current?.columnId ??
-    columns.find(column =>
-      (cardsByColumnId[column.id] || []).some(card => card.id === cardId),
-    )?.id;
-  const targetColumnId = over.data.current?.columnId ?? over.id;
+      const cardId = active.data.current?.card?.id ?? active.id;
+      const sourceColumnId =
+        active.data.current?.columnId ?? cardColumnIdByCardId[cardId];
+      const targetColumnId = over.data.current?.columnId ?? over.id;
 
-  if (
-    !cardId ||
-    !sourceColumnId ||
-    !targetColumnId ||
-    String(sourceColumnId) === String(targetColumnId)
-  ) {
-    return;
-  }
+      if (
+        !cardId ||
+        !sourceColumnId ||
+        !targetColumnId ||
+        String(sourceColumnId) === String(targetColumnId)
+      ) {
+        return;
+      }
 
-  const result = await dispatch(
-    moveCard({
-      cardId,
-      targetColumnId,
-    }),
+      dispatch(
+        moveCard({
+          cardId,
+          targetColumnId,
+        }),
+      );
+    },
+    [cardColumnIdByCardId, dispatch],
   );
 
-  if (moveCard.fulfilled.match(result)) {
-    dispatch(fetchCards(sourceColumnId));
-    dispatch(fetchCards(targetColumnId));
-  }
-};
-
-  const handleDragCancel = () => {
+  const handleDragCancel = useCallback(() => {
     setActiveDragCard(null);
-  };
+  }, []);
 
-  const handleSaveProfile = async profileData => {
-    const result = await dispatch(updateProfile(profileData));
+  const handleSaveProfile = useCallback(
+    async profileData => {
+      const result = await dispatch(updateProfile(profileData));
 
-    if (updateProfile.fulfilled.match(result)) {
-      setIsProfileOpen(false);
-    }
-  };
-
- const handleCreateBoard = async boardData => {
-  const result = await dispatch(createBoard(boardData));
-
-  if (createBoard.fulfilled.match(result)) {
-    setFilterPriority(null);
-    setIsNewBoardModalOpen(false);
-    setIsSidebarOpen(false);
-  }
-};
-
-  const handleEditBoard=async boardData=>{
-    const result=await dispatch(
-      updateBoard({
-        boardId:activeBoardId,
-        boardData,
-      }),
-    );
-    if(updateBoard.fulfilled.match(result)){
-      setIsEditBoardModalOpen(false);
-      setIsSidebarOpen(false);
-    }
-  };
-
-  const handleDeleteBoard=async boardId=>{
-    const result=await dispatch(deleteBoard(boardId));
-    if(deleteBoard.fulfilled.match(result)){
-      setFilterPriority(null);
-      setIsSidebarOpen(false);
-    }
-  };
-
-  const handleAddColumn = async columnTitle => {
-  const result = await dispatch(
-    createColumn({
-      boardId: activeBoardId,
-      title: columnTitle,
-    }),
+      if (updateProfile.fulfilled.match(result)) {
+        setIsProfileOpen(false);
+      }
+    },
+    [dispatch],
   );
 
-  if (createColumn.fulfilled.match(result)) {
-  setIsAddColumnModalOpen(false);
-  dispatch(fetchColumns(activeBoardId));
-}
-};
+  const handleCreateBoard = useCallback(
+    async boardData => {
+      const result = await dispatch(createBoard(boardData));
 
-  const handleEditColumn = async updatedTitle => {
-  const result = await dispatch(
-    updateColumn({
-      columnId: editingColumn.id,
-      title: updatedTitle,
-    }),
+      if (createBoard.fulfilled.match(result)) {
+        setFilterPriority(null);
+        setIsNewBoardModalOpen(false);
+        setIsSidebarOpen(false);
+      }
+    },
+    [dispatch],
   );
 
-  if (updateColumn.fulfilled.match(result)) {
-    setEditingColumn(null);
-    dispatch(fetchColumns(activeBoardId));
-  }
-};
+  const handleEditBoard = useCallback(
+    async boardData => {
+      if (!activeBoardId) return;
 
-  const handleDeleteColumn = async columnId => {
-  const result = await dispatch(deleteColumn(columnId));
+      const result = await dispatch(
+        updateBoard({
+          boardId: activeBoardId,
+          boardData,
+        }),
+      );
 
-  if (deleteColumn.fulfilled.match(result)) {
-    dispatch(fetchColumns(activeBoardId));
-  }
-};
+      if (updateBoard.fulfilled.match(result)) {
+        setIsEditBoardModalOpen(false);
+        setIsSidebarOpen(false);
+      }
+    },
+    [activeBoardId, dispatch],
+  );
 
-  const handleOpenAddCard = (columnId, event) => {
+  const handleDeleteBoard = useCallback(
+    async boardId => {
+      const result = await dispatch(deleteBoard(boardId));
+
+      if (deleteBoard.fulfilled.match(result)) {
+        setFilterPriority(null);
+        setIsSidebarOpen(false);
+      }
+    },
+    [dispatch],
+  );
+
+  const handleAddColumn = useCallback(
+    async columnTitle => {
+      if (!activeBoardId) return;
+
+      const result = await dispatch(
+        createColumn({
+          boardId: activeBoardId,
+          title: columnTitle,
+        }),
+      );
+
+      if (createColumn.fulfilled.match(result)) {
+        setIsAddColumnModalOpen(false);
+      }
+    },
+    [activeBoardId, dispatch],
+  );
+
+  const handleEditColumn = useCallback(
+    async updatedTitle => {
+      if (!editingColumn) return;
+
+      const result = await dispatch(
+        updateColumn({
+          columnId: editingColumn.id,
+          title: updatedTitle,
+        }),
+      );
+
+      if (updateColumn.fulfilled.match(result)) {
+        setEditingColumn(null);
+      }
+    },
+    [dispatch, editingColumn],
+  );
+
+  const handleDeleteColumn = useCallback(
+    async columnId => {
+      await dispatch(deleteColumn(columnId));
+    },
+    [dispatch],
+  );
+
+  const handleOpenAddCard = useCallback((columnId, event) => {
     event.stopPropagation();
     setActiveCardColumnId(columnId);
     setIsAddCardModalOpen(true);
-  };
+  }, []);
 
- const handleAddCard = async cardData => {
-  const result = await dispatch(
-    createCard({
-      columnId: activeCardColumnId,
-      cardData,
-    }),
+  const handleAddCard = useCallback(
+    async cardData => {
+      if (!activeCardColumnId) return;
+
+      const columnId = activeCardColumnId;
+
+      setIsAddCardModalOpen(false);
+      setActiveCardColumnId(null);
+
+      await dispatch(
+        createCard({
+          columnId,
+          cardData,
+        }),
+      );
+    },
+    [activeCardColumnId, dispatch],
   );
 
-  if (createCard.fulfilled.match(result)) {
-    setIsAddCardModalOpen(false);
-    setActiveCardColumnId(null);
-    
-  }
-};
-
-  const handleDeleteCard = async cardId => {
-    await dispatch(deleteCard(cardId));
-  };
-const handleMoveCard = async cardId => {
-  const currentColumn = columns.find(column =>
-    (cardsByColumnId[column.id] || []).some(card => card.id === cardId),
+  const handleDeleteCard = useCallback(
+    async cardId => {
+      await dispatch(deleteCard(cardId));
+    },
+    [dispatch],
   );
 
-  const targetColumnId = columns.find(
-    column => column.id !== currentColumn?.id,
-  )?.id;
+  const handleMoveCard = useCallback(
+    async cardId => {
+      const sourceColumnId = cardColumnIdByCardId[cardId];
+      const targetColumnId =
+        columns.find(column => column.id !== sourceColumnId)?.id ?? null;
 
-  if (!targetColumnId) return;
+      if (!sourceColumnId || !targetColumnId) return;
 
-  const result = await dispatch(
-    moveCard({
-      cardId,
-      targetColumnId,
-    }),
+      dispatch(
+        moveCard({
+          cardId,
+          targetColumnId,
+        }),
+      );
+    },
+    [cardColumnIdByCardId, columns, dispatch],
   );
 
-  if (moveCard.fulfilled.match(result)) {
-    if (currentColumn?.id) {
-      dispatch(fetchCards(currentColumn.id));
-    }
-
-    dispatch(fetchCards(targetColumnId));
-  }
-};
-
-  const handleEditCard = (columnId, card) => {
+  const handleEditCard = useCallback((columnId, card) => {
     setEditingCard({ card, columnId });
-  };
+  }, []);
 
- const handleSaveCard = async updatedCard => {
-  const result = await dispatch(
-    updateCard({
-      cardId: updatedCard.id,
-      cardData: updatedCard,
-    }),
+  const handleSaveCard = useCallback(
+    async updatedCard => {
+      if (!editingCard) return;
+
+      const currentEditingCard = editingCard;
+
+      setEditingCard(null);
+
+      const result = await dispatch(
+        updateCard({
+          cardId: updatedCard.id,
+          cardData: updatedCard,
+        }),
+      );
+
+      if (updateCard.rejected.match(result)) {
+        setEditingCard({
+          columnId: currentEditingCard.columnId,
+          card: updatedCard,
+        });
+      }
+    },
+    [dispatch, editingCard],
   );
 
-  if (updateCard.fulfilled.match(result)) {
-    dispatch(fetchCards(editingCard.columnId));
-    setEditingCard(null);
-  }
-};
+  const handleBoardSelect = useCallback(
+    boardId => {
+      dispatch(setActiveBoardId(boardId));
+      setFilterPriority(null);
+      setIsSidebarOpen(false);
+    },
+    [dispatch],
+  );
+
+  const handleOpenColumnEditor = useCallback(column => {
+    setEditingColumn(column);
+  }, []);
 
   return (
     <div className={styles.page}>
@@ -436,11 +781,7 @@ const handleMoveCard = async cardId => {
                   className={`${styles.boardItem} ${
                     board.id === activeBoardId ? styles.activeBoard : ''
                   }`}
-                 onClick={() => {
-  dispatch(setActiveBoardId(board.id));
-  setFilterPriority(null);
-  setIsSidebarOpen(false);
-}}
+                  onClick={() => handleBoardSelect(board.id)}
                 >
                   <div className={styles.boardName}>
                     <img src={board.icon || projectIcon} alt="" />
@@ -541,14 +882,7 @@ const handleMoveCard = async cardId => {
 
         <main
           className={`${styles.content} ${activeBoard ? styles.boardContent : ''}`}
-          style={(() => {
-            const bg = findBgById(activeBoard?.bgId);
-            return {
-              ...(bg?.mobile   ? { '--mobile-board-bg':  `url(${bg.mobile})`   } : {}),
-              ...(bg?.tablet   ? { '--tablet-board-bg':  `url(${bg.tablet})`   } : {}),
-              ...(bg?.desktop  ? { '--desktop-board-bg': `url(${bg.desktop})`  } : {}),
-            };
-          })()}
+          style={backgroundStyle}
         >
           <div className={styles.boardTopRow}>
             {activeBoard && (
@@ -597,12 +931,12 @@ const handleMoveCard = async cardId => {
                   key={column.id}
                   column={column}
                   filterPriority={filterPriority}
-                  onEdit={() => setEditingColumn(column)}
-                  onDelete={() => handleDeleteColumn(column.id)}
-                  onAddCard={event => handleOpenAddCard(column.id, event)}
+                  onEdit={handleOpenColumnEditor}
+                  onDelete={handleDeleteColumn}
+                  onAddCard={handleOpenAddCard}
                   onDeleteCard={handleDeleteCard}
-                  onEditCard={card => handleEditCard(column.id, card)}
-                   onMoveCard={handleMoveCard}
+                  onEditCard={handleEditCard}
+                  onMoveCard={handleMoveCard}
                 />
               ))}
 

@@ -366,7 +366,7 @@
 
 .boardContent {
   background-color: #1f1f1f;
-  background-image: var(--mobile-board-bg);
+  background-image: var(--board-bg, none);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -732,7 +732,7 @@
 
   /* Tablet: swap to tablet-sized background when available */
   .boardContent {
-    background-image: var(--tablet-board-bg, var(--mobile-board-bg));
+    background-image: var(--board-bg, none);
     background-size: cover;
     background-position: center top;
     background-repeat: no-repeat;
@@ -829,7 +829,7 @@
 
   /* Desktop: swap to full PC-sized background when available */
   .boardContent {
-    background-image: var(--desktop-board-bg, var(--tablet-board-bg, var(--mobile-board-bg)));
+    background-image: var(--board-bg, none);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
