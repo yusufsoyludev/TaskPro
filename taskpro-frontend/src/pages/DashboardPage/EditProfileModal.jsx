@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import styles from './EditProfileModal.module.css';
 
-import defaultAvatar from '../../assets/user.png';
+import defaultAvatar from '../../assets/user.webp';
 import plusIcon from '../../assets/svg/plus.svg';
 
 export default function EditProfileModal({ user, onClose, onSave }) {

@@ -25,25 +25,23 @@ function formatDeadline(date) {
 }
 
 export default function AddCardModal({ onClose, onAdd }) {
-  const [title,          setTitle         ] = useState('');
-  const [description,    setDescription   ] = useState('');
-  const [labelColor,     setLabelColor    ] = useState('purple');
-  const [deadline,       setDeadline      ] = useState(new Date());
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [labelColor, setLabelColor] = useState('purple');
+  const [deadline, setDeadline] = useState(new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleSubmit = event => {
     event.preventDefault();
 
     const formData = {
-      title:       title.trim(),
+      title: title.trim(),
       description: description.trim(),
       labelColor,
-      deadline:    deadline ? deadline.toISOString() : null,
+      deadline: deadline ? deadline.toISOString() : null,
     };
 
-    console.log('Add Card form data:', formData);
-
-    if (onAdd) onAdd(formData);
+    onAdd?.(formData);
   };
 
   const handleDateSelect = date => {

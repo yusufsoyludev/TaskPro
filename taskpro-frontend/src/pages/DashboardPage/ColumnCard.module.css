@@ -123,26 +123,45 @@
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background-color 200ms ease-in-out;
+  box-shadow:
+    inset 0 0 0 1px rgba(22, 22, 22, 0.08),
+    0 12px 24px rgba(0, 0, 0, 0.16);
+  transition:
+    background-color 200ms ease-in-out,
+    box-shadow 200ms ease-in-out,
+    transform 200ms ease-in-out;
 }
 
 .addCardBtn:hover {
   background-color: #a8cc98;
+  box-shadow:
+    inset 0 0 0 1px rgba(22, 22, 22, 0.12),
+    0 16px 28px rgba(0, 0, 0, 0.18);
+}
+
+.addCardBtn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(190, 219, 176, 0.32),
+    inset 0 0 0 1px rgba(22, 22, 22, 0.12),
+    0 16px 28px rgba(0, 0, 0, 0.18);
 }
 
 .addCardBtn span {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background-color: #161616;
+  background-color: rgba(22, 22, 22, 0.94);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .addCardBtn img {
   width: 14px;
   height: 14px;
-  filter: invert(1);
+  display: block;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.32));
 }

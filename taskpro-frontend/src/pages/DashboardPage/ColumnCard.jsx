@@ -3,8 +3,8 @@ import { useDroppable } from '@dnd-kit/core';
 import styles from './ColumnCard.module.css';
 
 import plusIcon from '../../assets/svg/plus.svg';
-import pencilIcon from '../../assets/svg-navigate/pencil-01.svg';
-import trashIcon from '../../assets/svg-navigate/trash-04.svg';
+import pencilIcon from '../../assets/svg/pencil-01.svg';
+import trashIcon from '../../assets/svg/trash-04.svg';
 
 import Card from './Card';
 

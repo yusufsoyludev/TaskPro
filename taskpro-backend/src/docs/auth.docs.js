@@ -57,6 +57,26 @@
 
 /**
  * @swagger
+ * /auth/profile:
+ *   patch:
+ *     summary: Update current user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             name: Yusuf
+ *             avatarUrl: https://example.com/avatar.png
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ */
+
+/**
+ * @swagger
  * /auth/logout:
  *   post:
  *     summary: Logout user

@@ -36,14 +36,19 @@ import {
 
 import styles from './DashboardPage.module.css';
 
-import { logout } from '../../features/auth/authOperations';
-import { selectToken } from '../../features/auth/authSelectors';
+import { logout, updateProfile } from '../../features/auth/authOperations';
+import {
+  selectIsRefreshing,
+  selectToken,
+  selectUser,
+} from '../../features/auth/authSelectors';
 import { setAuthHeader } from '../../services/api';
 
 import {
   selectBoards,
   selectActiveBoard,
   selectActiveBoardId,
+  selectBoardsLoading,
 } from '../../features/boards/boardsSelectors';
 
 
@@ -68,21 +73,24 @@ import filterIcon from '../../assets/svg/filter.svg';
 import plusIcon from '../../assets/svg/plus.svg';
 import logoutIcon from '../../assets/svg/logout.svg';
 
-import helpIcon from '../../assets/svg-navigate/help-circle.svg';
-import projectIcon from '../../assets/svg-navigate/Project.svg';
-import puzzleIcon from '../../assets/svg-navigate/puzzle-piece-02.svg';
-import pencilIcon from '../../assets/svg-navigate/pencil-01.svg';
-import trashIcon from '../../assets/svg-navigate/trash-04.svg';
+import helpIcon from '../../assets/svg/help-circle.svg';
+import projectIcon from '../../assets/svg/Project.svg';
+import puzzleIcon from '../../assets/svg/puzzle-piece-02.svg';
+import pencilIcon from '../../assets/svg/pencil-01.svg';
+import trashIcon from '../../assets/svg/trash-04.svg';
 
-import cactusImg from '../../assets/2.png';
-import userImg from '../../assets/user.png';
+import cactusImg from '../../assets/2.webp';
+import userImg from '../../assets/user.webp';
 
 import { findBgById } from '../../constants/backgroundConfig';
 
 export default function DashboardPage() {
   const token=useSelector(selectToken);
+  const authUser = useSelector(selectUser);
+  const isRefreshing = useSelector(selectIsRefreshing);
   const dispatch = useDispatch();
   const boards = useSelector(selectBoards);
+  const isBoardsLoading = useSelector(selectBoardsLoading);
 const activeBoard = useSelector(selectActiveBoard);
 const activeBoardId = useSelector(selectActiveBoardId);
  const columns = useSelector(selectColumns);
@@ -90,11 +98,11 @@ const activeBoardId = useSelector(selectActiveBoardId);
   
 const navigate = useNavigate();
 useEffect(() => {
-  if (!token) return;
+  if (!token || isRefreshing || !authUser) return;
 
   setAuthHeader(token);
   dispatch(fetchBoards());
-}, [dispatch, token]);
+}, [authUser, dispatch, isRefreshing, token]);
 useEffect(() => {
   if (!activeBoardId) return;
 
@@ -158,7 +166,11 @@ const handleLogout = async () => {
     ...(hasTouchInput ? [] : [pointerSensor]),
   );
 
-  const [user, setUser] = useState({ name: 'Ivetta', avatarUrl: null });
+ const user = {
+  name: authUser?.name || authUser?.email || '',
+  avatarUrl:
+    authUser?.avatarUrl || authUser?.avatarURL || authUser?.avatar || null,
+};
   
 
   
@@ -220,9 +232,12 @@ const columnsWithCards = columns.map(column => ({
     setActiveDragCard(null);
   };
 
-  const handleSaveProfile = updated => {
-    setUser(updated);
-    setIsProfileOpen(false);
+  const handleSaveProfile = async profileData => {
+    const result = await dispatch(updateProfile(profileData));
+
+    if (updateProfile.fulfilled.match(result)) {
+      setIsProfileOpen(false);
+    }
   };
 
  const handleCreateBoard = async boardData => {
@@ -309,17 +324,13 @@ const columnsWithCards = columns.map(column => ({
   if (createCard.fulfilled.match(result)) {
     setIsAddCardModalOpen(false);
     setActiveCardColumnId(null);
-    dispatch(fetchCards(activeCardColumnId));
+    
   }
 };
 
-  const handleDeleteCard = async (columnId, cardId) => {
-  const result = await dispatch(deleteCard(cardId));
-
-  if (deleteCard.fulfilled.match(result)) {
-    dispatch(fetchCards(columnId));
-  }
-};
+  const handleDeleteCard = async cardId => {
+    await dispatch(deleteCard(cardId));
+  };
 const handleMoveCard = async cardId => {
   const currentColumn = columns.find(column =>
     (cardsByColumnId[column.id] || []).some(card => card.id === cardId),
@@ -351,7 +362,7 @@ const handleMoveCard = async cardId => {
     setEditingCard({ card, columnId });
   };
 
-  const handleSaveCard = async updatedCard => {
+ const handleSaveCard = async updatedCard => {
   const result = await dispatch(
     updateCard({
       cardId: updatedCard.id,
@@ -404,7 +415,14 @@ const handleMoveCard = async cardId => {
           </div>
 
           <nav className={styles.boardList}>
-            {boards.length === 0 ? (
+            {isBoardsLoading && boards.length === 0 ? (
+              <div className={styles.boardItem}>
+                <div className={styles.boardName}>
+                  <img src={puzzleIcon} alt="" />
+                  <span>Loading boards...</span>
+                </div>
+              </div>
+            ) : boards.length === 0 ? (
               <div className={styles.boardItem}>
                 <div className={styles.boardName}>
                   <img src={puzzleIcon} alt="" />
@@ -564,7 +582,9 @@ const handleMoveCard = async cardId => {
             </div>
           </div>
 
-          {activeBoard ? (
+          {isBoardsLoading && boards.length === 0 ? (
+            <p className={styles.emptyText}>Loading boards...</p>
+          ) : activeBoard ? (
             <DndContext
               sensors={sensors}
               onDragStart={handleDragStart}
@@ -580,7 +600,7 @@ const handleMoveCard = async cardId => {
                   onEdit={() => setEditingColumn(column)}
                   onDelete={() => handleDeleteColumn(column.id)}
                   onAddCard={event => handleOpenAddCard(column.id, event)}
-                  onDeleteCard={cardId => handleDeleteCard(column.id, cardId)}
+                  onDeleteCard={handleDeleteCard}
                   onEditCard={card => handleEditCard(column.id, card)}
                    onMoveCard={handleMoveCard}
                 />

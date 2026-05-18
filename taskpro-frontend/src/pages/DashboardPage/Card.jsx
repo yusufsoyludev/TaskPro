@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import styles from './Card.module.css';
 import { PRIORITY_MAP } from './priorityConfig';
 
-import moveIcon from '../../assets/svg-navigate/logout-grey.svg';
-import pencilIcon from '../../assets/svg-navigate/pencil-01.svg';
-import trashIcon from '../../assets/svg-navigate/trash-04.svg';
+import moveIcon from '../../assets/svg/logout-grey.svg';
+import pencilIcon from '../../assets/svg/pencil-01.svg';
+import trashIcon from '../../assets/svg/trash-04.svg';
 
 function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -33,9 +34,9 @@ export default function Card({
   columnId,
   onEdit,
   onDelete,
-  onMove,
   isOverlay = false,
 }) {
+  const [isCompleted, setIsCompleted] = useState(false);
   const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({
       id: card.id,
@@ -107,14 +108,18 @@ export default function Card({
             <div className={styles.actions}>
               <button
                 type="button"
-                className={styles.actionBtn}
-                aria-label="Move card"
+                className={`${styles.actionBtn} ${
+                  isCompleted ? styles.actionBtnActive : ''
+                }`}
+                aria-label={
+                  isCompleted ? 'Mark as incomplete' : 'Mark as complete'
+                }
                 onMouseDown={stopDragActivation}
                 onPointerDown={stopDragActivation}
                 onTouchStart={stopDragActivation}
                 onClick={event => {
                   event.stopPropagation();
-                  onMove?.(card.id);
+                  setIsCompleted(prev => !prev);
                 }}
               >
                 <img src={moveIcon} alt="" />
@@ -155,10 +160,14 @@ export default function Card({
       </div>
 
       <div
-        className={styles.completedOverlay}
+        className={`${styles.completedOverlay} ${
+          isCompleted ? styles.completedOverlayVisible : ''
+        }`}
         style={{ '--priority-rgb': rgb }}
         aria-hidden="true"
-      />
+      >
+        <span className={styles.completedBadge}>Completed</span>
+      </div>
     </article>
   );
 }

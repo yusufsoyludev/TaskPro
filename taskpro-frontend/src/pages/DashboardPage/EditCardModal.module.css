@@ -195,28 +195,46 @@
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  box-shadow:
+    inset 0 0 0 1px rgba(22, 22, 22, 0.08),
+    0 10px 24px rgba(0, 0, 0, 0.16);
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .editBtn:hover {
   background-color: #a8cc98;
+  box-shadow:
+    inset 0 0 0 1px rgba(22, 22, 22, 0.12),
+    0 14px 28px rgba(0, 0, 0, 0.2);
+}
+
+.editBtn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(190, 219, 176, 0.32),
+    inset 0 0 0 1px rgba(22, 22, 22, 0.12),
+    0 14px 28px rgba(0, 0, 0, 0.2);
 }
 
 .editIcon {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background-color: #161616;
+  background-color: rgba(22, 22, 22, 0.94);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .editIcon img {
   width: 14px;
   height: 14px;
-  filter: invert(1);
+  display: block;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.32));
 }
 
 @media (max-width: 480px) {

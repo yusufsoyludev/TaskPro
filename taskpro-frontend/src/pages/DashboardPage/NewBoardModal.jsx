@@ -3,14 +3,14 @@ import styles from './NewBoardModal.module.css';
 
 import plusIcon from '../../assets/svg/plus.svg';
 
-import projectIcon from '../../assets/create-board-icons/Project.svg';
-import starIcon from '../../assets/create-board-icons/star-04.svg';
-import loadingIcon from '../../assets/create-board-icons/loading-03.svg';
-import puzzleIcon from '../../assets/create-board-icons/puzzle-piece-02.svg';
-import containerIcon from '../../assets/create-board-icons/container.svg';
-import lightningIcon from '../../assets/create-board-icons/lightning-02.svg';
-import colorsIcon from '../../assets/create-board-icons/colors.svg';
-import hexagonIcon from '../../assets/create-board-icons/hexagon-01.svg';
+import projectIcon from '../../assets/svg/Project.svg';
+import starIcon from '../../assets/svg/star-04.svg';
+import loadingIcon from '../../assets/svg/loading-03.svg';
+import puzzleIcon from '../../assets/svg/puzzle-piece-02.svg';
+import containerIcon from '../../assets/svg/container.svg';
+import lightningIcon from '../../assets/svg/lightning-02.svg';
+import colorsIcon from '../../assets/svg/colors.svg';
+import hexagonIcon from '../../assets/svg/hexagon-01.svg';
 
 import { BACKGROUNDS } from '../../constants/backgroundConfig';
 

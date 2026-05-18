@@ -1,6 +1,8 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../services/api";
 
+const getOwnerToken = thunkAPI => thunkAPI.getState().auth.token;
+
 const normalizeColumn = (column) => ({
   ...column,
   id: column.id || column._id,
@@ -10,14 +12,22 @@ const normalizeColumn = (column) => ({
 export const fetchColumns = createAsyncThunk(
   'columns/fetchByBoard',
   async (boardId, thunkAPI) => {
+    const ownerToken = getOwnerToken(thunkAPI);
+
     try {
       const { data } = await api.get(`/columns/${boardId}`);
       const columns = data.data || data;
 
-      return columns.map(normalizeColumn);
+      return {
+        ownerToken,
+        items: columns.map(normalizeColumn),
+      };
     } catch (error) {
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || error.message,
+        {
+          ownerToken,
+          message: error.response?.data?.message || error.message,
+        },
       );
     }
   },
@@ -25,12 +35,20 @@ export const fetchColumns = createAsyncThunk(
 export const createColumn = createAsyncThunk(
   "columns/create",
   async ({ boardId, title }, thunkAPI) => {
+    const ownerToken = getOwnerToken(thunkAPI);
+
     try {
       const { data } = await api.post("/columns", { boardId, title });
-      return normalizeColumn(data.data || data);
+      return {
+        ownerToken,
+        column: normalizeColumn(data.data || data),
+      };
     } catch (error) {
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || "error.message,",
+        {
+          ownerToken,
+          message: error.response?.data?.message || "error.message,",
+        },
       );
     }
   },
@@ -39,12 +57,20 @@ export const createColumn = createAsyncThunk(
 export const updateColumn = createAsyncThunk(
   "columns/update",
   async ({ columnId, title }, thunkAPI) => {
+    const ownerToken = getOwnerToken(thunkAPI);
+
     try {
       const { data } = await api.patch(`/columns/${columnId}`, { title });
-      return normalizeColumn(data.data || data);
+      return {
+        ownerToken,
+        column: normalizeColumn(data.data || data),
+      };
     } catch (error) {
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || error.message,
+        {
+          ownerToken,
+          message: error.response?.data?.message || error.message,
+        },
       );
     }
   },
@@ -52,12 +78,20 @@ export const updateColumn = createAsyncThunk(
 export const deleteColumn = createAsyncThunk(
   "columns/delete",
   async (columnId, thunkAPI) => {
+    const ownerToken = getOwnerToken(thunkAPI);
+
     try {
       await api.delete(`/columns/${columnId}`);
-      return columnId;
+      return {
+        ownerToken,
+        columnId,
+      };
     } catch (error) {
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || error.message,
+        {
+          ownerToken,
+          message: error.response?.data?.message || error.message,
+        },
       );
     }
   },

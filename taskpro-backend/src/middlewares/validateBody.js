@@ -1,8 +1,9 @@
 export const validateBody = (schema) => {
   return async (req, res, next) => {
     try {
-      await schema.validateAsync(req.body, {
+      req.body = await schema.validateAsync(req.body, {
         abortEarly: false,
+        stripUnknown: true,
       });
       next();
     } catch (error) {
